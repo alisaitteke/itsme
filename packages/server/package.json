@@ -1,0 +1,31 @@
+{
+  "name": "@itsme/server",
+  "version": "0.1.0",
+  "description": "MCP server that drives a browser through the itsme extension",
+  "type": "module",
+  "bin": {
+    "itsme": "./dist/cli.mjs"
+  },
+  "files": [
+    "dist"
+  ],
+  "engines": {
+    "node": ">=22"
+  },
+  "scripts": {
+    "build": "tsdown",
+    "dev": "tsdown --watch",
+    "typecheck": "tsc -p . --pretty false"
+  },
+  "dependencies": {
+    "@modelcontextprotocol/server": "^2.4.0",
+    "ws": "^8.23.0",
+    "zod": "^4.6.7"
+  },
+  "devDependencies": {
+    "@modelcontextprotocol/client": "^2.4.0",
+    "@itsme/protocol": "workspace:*",
+    "@types/ws": "^8.18.2",
+    "tsdown": "^0.23.7"
+  }
+}

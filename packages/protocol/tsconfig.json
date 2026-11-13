@@ -1,0 +1,8 @@
+{
+  "extends": "../../tsconfig.base.json",
+  "compilerOptions": {
+    // Runs in Node and in the extension; DOM is only here for the shared URL global.
+    "lib": ["ES2023", "DOM"]
+  },
+  "include": ["src", "test"]
+}

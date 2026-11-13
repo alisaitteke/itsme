@@ -1,0 +1,29 @@
+{
+  "name": "itsme",
+  "private": true,
+  "type": "module",
+  "packageManager": "pnpm@12.10.1",
+  "engines": {
+    "node": ">=22"
+  },
+  "scripts": {
+    "build": "pnpm -r build",
+    "build:firefox": "pnpm --filter @itsme/extension build:firefox",
+    "dev:extension": "pnpm --filter @itsme/extension dev",
+    "dev:server": "pnpm --filter @itsme/server dev",
+    "test": "vitest run",
+    "test:e2e": "node tests/e2e/chromium.mjs",
+    "typecheck": "tsc -p . --pretty false && pnpm -r typecheck",
+    "lint": "biome check .",
+    "format": "biome check --write ."
+  },
+  "devDependencies": {
+    "@biomejs/biome": "^2.6.7",
+    "@modelcontextprotocol/client": "^2.4.0",
+    "@modelcontextprotocol/server": "^2.4.0",
+    "@itsme/protocol": "workspace:*",
+    "@types/node": "^22.0.0",
+    "typescript": "^7.0.2",
+    "vitest": "^5.1.0"
+  }
+}

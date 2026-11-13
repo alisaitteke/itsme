@@ -1,0 +1,117 @@
+:root {
+  color-scheme: light dark;
+  --text: #111827;
+  --muted: #6b7280;
+  --border: #d1d5db;
+  --surface: #ffffff;
+  --accent: #2563eb;
+  font:
+    13px / 1.4 system-ui,
+    sans-serif;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --text: #f3f4f6;
+    --muted: #9ca3af;
+    --border: #4b5563;
+    --surface: #1f2937;
+    --accent: #60a5fa;
+  }
+}
+
+body {
+  width: 280px;
+  margin: 0;
+  padding: 14px;
+  color: var(--text);
+  background: var(--surface);
+}
+
+header {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+  margin-bottom: 14px;
+}
+
+h1 {
+  margin: 0;
+  font-size: 14px;
+}
+
+#status {
+  margin: 0;
+  color: var(--muted);
+}
+
+.dot {
+  flex: none;
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background: #9ca3af;
+}
+
+.dot[data-state="connected"] {
+  background: #16a34a;
+}
+
+.dot[data-state="connecting"] {
+  background: #d97706;
+}
+
+.dot[data-state="disconnected"] {
+  background: #dc2626;
+}
+
+form {
+  display: grid;
+  gap: 10px;
+}
+
+label {
+  display: grid;
+  gap: 4px;
+}
+
+label.toggle {
+  grid-template-columns: 1fr auto;
+  align-items: center;
+  gap: 10px;
+}
+
+label[hidden] {
+  display: none;
+}
+
+small {
+  display: block;
+  color: var(--muted);
+}
+
+input[type="number"],
+input[type="password"] {
+  padding: 6px 8px;
+  font: inherit;
+  color: inherit;
+  background: transparent;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+}
+
+button {
+  padding: 7px;
+  font: inherit;
+  font-weight: 600;
+  color: #ffffff;
+  background: #2563eb;
+  border: 0;
+  border-radius: 6px;
+  cursor: pointer;
+}
+
+:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 1px;
+}
