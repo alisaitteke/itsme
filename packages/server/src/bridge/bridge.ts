@@ -10,7 +10,8 @@ import { Hub } from './hub.ts';
 import type { Link, LinkOptions } from './link.ts';
 import { PeerLink } from './peer.ts';
 
-export type BridgeMode = 'hub' | 'peer' | 'offline';
+/** "outdated": a newer server took the port over; this one stays out of its way. */
+export type BridgeMode = 'hub' | 'peer' | 'offline' | 'outdated';
 
 export interface BridgeStatus {
   mode: BridgeMode;
@@ -30,6 +31,7 @@ export class Bridge {
   #mode: BridgeMode = 'offline';
   #retry: NodeJS.Timeout | undefined;
   #stopped = false;
+  #lastWarning = '';
 
   constructor(options: LinkOptions) {
     this.#options = options;
@@ -58,7 +60,9 @@ export class Bridge {
     if (!this.#link) {
       throw new BridgeError(
         'NOT_CONNECTED',
-        `Bridge is offline: port ${this.#options.port} is unavailable`,
+        this.#mode === 'outdated'
+          ? 'A newer itsme server is running on this machine. Restart this MCP client to load it.'
+          : `Bridge is offline: port ${this.#options.port} is unavailable`,
       );
     }
     const raw = await this.#link.request(name, input);
@@ -76,8 +80,9 @@ export class Bridge {
 
   async #establish(): Promise<void> {
     const { logger, port } = this.#options;
+    if (this.#mode === 'outdated') return;
 
-    const hub = new Hub(this.#options);
+    const hub: Hub = new Hub(this.#options, () => void this.#yieldTo(hub));
     try {
       await hub.listen();
       logger.info(`Listening for the extension on port ${port}`);
@@ -85,7 +90,7 @@ export class Bridge {
       return;
     } catch (error) {
       if ((error as NodeJS.ErrnoException).code !== 'EADDRINUSE') {
-        logger.warn(`Cannot listen on port ${port}: ${(error as Error).message}`);
+        this.#warnOnce(`Cannot listen on port ${port}: ${(error as Error).message}`);
         this.#retryLater();
         return;
       }
@@ -101,7 +106,7 @@ export class Bridge {
       logger.info(`Port ${port} belongs to another itsme server; relaying through it`);
       await this.#adopt(peer, 'peer');
     } catch (error) {
-      logger.warn(`Port ${port} is busy: ${(error as Error).message}`);
+      this.#warnOnce(`Port ${port} is busy: ${(error as Error).message}`);
       this.#retryLater();
     }
   }
@@ -113,10 +118,28 @@ export class Bridge {
     }
     this.#link = link;
     this.#mode = mode;
+    this.#lastWarning = '';
+  }
+
+  async #yieldTo(hub: Hub): Promise<void> {
+    if (this.#link !== hub) return;
+    this.#link = null;
+    this.#mode = 'outdated';
+    this.#options.logger.warn(
+      'A newer itsme server started; this one let go of the port. Restart this MCP client.',
+    );
+    await hub.close();
+  }
+
+  /** The retry loop hits the same problem every two seconds; say it once. */
+  #warnOnce(message: string): void {
+    if (message === this.#lastWarning) return;
+    this.#lastWarning = message;
+    this.#options.logger.warn(message);
   }
 
   #retryLater(): void {
-    if (this.#stopped) return;
+    if (this.#stopped || this.#mode === 'outdated') return;
     this.#retry = setTimeout(() => void this.#establish(), RETRY_DELAY_MS);
     this.#retry.unref();
   }

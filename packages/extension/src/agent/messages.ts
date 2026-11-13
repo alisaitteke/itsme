@@ -1,4 +1,4 @@
-import type { CommandResult, Modifier, Target, WireError } from '@itsme/protocol';
+import type { CommandParams, CommandResult, Modifier, Target, WireError } from '@itsme/protocol';
 import type { KeyInfo } from '../shared/keys.ts';
 
 // Type-only imports from the protocol package keep zod out of the injected script.
@@ -6,6 +6,7 @@ import type { KeyInfo } from '../shared/keys.ts';
 export const AGENT_CHANNEL = 'itsme/agent';
 
 export type Button = 'left' | 'right' | 'middle';
+export type UploadFile = CommandParams<'page.upload'>['files'][number];
 export type Direction = 'up' | 'down' | 'left' | 'right';
 
 export type AgentCall =
@@ -19,6 +20,10 @@ export type AgentCall =
   | { kind: 'find'; query: string }
   | { kind: 'text'; maxChars: number }
   | { kind: 'viewport' }
+  | { kind: 'prompt'; host: string }
+  | { kind: 'hideIndicator' }
+  | { kind: 'hasText'; text: string }
+  | { kind: 'upload'; ref: string; files: UploadFile[] }
   | { kind: 'locate'; target: Target; scroll: boolean }
   | { kind: 'click'; target: Target; button: Button; count: number; modifiers: Modifier[] }
   | { kind: 'hover'; target: Target }
@@ -34,6 +39,10 @@ export interface AgentResults {
   find: CommandResult<'page.find'>;
   text: CommandResult<'page.text'>;
   viewport: { width: number; height: number };
+  prompt: Record<string, never>;
+  hideIndicator: Record<string, never>;
+  hasText: boolean;
+  upload: Record<string, never>;
   /** Viewport point to press, and whether a real pointer there would hit the target. */
   locate: { x: number; y: number; hittable: boolean; inViewport: boolean };
   click: Record<string, never>;

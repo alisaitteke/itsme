@@ -50,6 +50,7 @@ const INTERACTIVE_ROLES = new Set([
   'slider',
   'spinbutton',
   'clickable',
+  'fileinput',
 ]);
 
 /** Roles whose text is their name; their children add nothing to an outline. */
@@ -65,6 +66,7 @@ export function roleOf(el: Element): string | null {
     if (el.type === 'hidden') return null;
     if (el.type === 'checkbox' || el.type === 'radio') return el.type;
     if (el.type === 'range') return 'slider';
+    if (el.type === 'file') return 'fileinput';
     return BUTTON_INPUT_TYPES.has(el.type) ? 'button' : 'textbox';
   }
   const byTag = TAG_ROLES[el.localName];
@@ -121,6 +123,8 @@ export function stateOf(el: Element, role: string): string[] {
   if (isInput(el)) {
     if (el.type === 'checkbox' || el.type === 'radio') {
       state.push(el.checked ? 'checked' : 'unchecked');
+    } else if (el.type === 'file') {
+      state.push(`files=${el.files?.length ?? 0}`);
       // Password contents never leave the page.
     } else if (el.type !== 'password' && !BUTTON_INPUT_TYPES.has(el.type)) {
       state.push(`value=${JSON.stringify(clean(el.value, MAX_NAME_LENGTH))}`);

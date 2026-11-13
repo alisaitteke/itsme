@@ -1,7 +1,8 @@
 import { browser } from 'wxt/browser';
 import { addToSession, removeFromSession, sessionTabs } from '../../background/session-tabs.ts';
 import { STATUS_REQUEST, type StatusResponse } from '../../shared/runtime-messages.ts';
-import { loadSettings, saveSettings } from '../../shared/settings.ts';
+import { allowSite, loadSettings, saveSettings } from '../../shared/settings.ts';
+import { hostOf, normalizeSite } from '../../shared/sites.ts';
 
 const STATUS_POLL_MS = 1_000;
 
@@ -16,6 +17,9 @@ const enabled = byId<HTMLInputElement>('enabled');
 const port = byId<HTMLInputElement>('port');
 const token = byId<HTMLInputElement>('token');
 const realInput = byId<HTMLInputElement>('real-input');
+const askSites = byId<HTMLInputElement>('ask-sites');
+const allowedList = byId<HTMLUListElement>('allowed');
+const blocked = byId<HTMLTextAreaElement>('blocked');
 const share = byId<HTMLButtonElement>('share');
 
 function describe(status: StatusResponse): { state: string; text: string } {
@@ -40,12 +44,39 @@ async function refreshStatus(): Promise<void> {
   statusText.textContent = text;
 }
 
+function renderAllowed(sites: readonly string[]): void {
+  allowedList.replaceChildren(
+    ...sites.map((site) => {
+      const item = document.createElement('li');
+      const remove = document.createElement('button');
+      remove.type = 'button';
+      remove.className = 'remove';
+      remove.textContent = '×';
+      remove.setAttribute('aria-label', `Remove ${site}`);
+      remove.addEventListener('click', async () => {
+        const { allowedSites } = await loadSettings();
+        const next = await saveSettings({ allowedSites: allowedSites.filter((s) => s !== site) });
+        renderAllowed(next.allowedSites);
+      });
+      item.append(site, remove);
+      return item;
+    }),
+  );
+  if (sites.length === 0) allowedList.textContent = 'None yet';
+}
+
 async function save(): Promise<void> {
+  const blockedSites = blocked.value
+    .split('\n')
+    .map(normalizeSite)
+    .filter((site): site is string => site !== null);
   await saveSettings({
     enabled: enabled.checked,
     port: port.valueAsNumber,
     token: token.value,
     realInput: realInput.checked,
+    siteAccess: askSites.checked ? 'ask' : 'all',
+    blockedSites: [...new Set(blockedSites)],
   });
   await refreshStatus();
 }
@@ -65,8 +96,17 @@ async function setupSharing(): Promise<void> {
   };
   share.addEventListener('click', async () => {
     share.disabled = true;
-    if (share.dataset.shared === 'true') await removeFromSession(tabId);
-    else await addToSession(tabId);
+    if (share.dataset.shared === 'true') {
+      await removeFromSession(tabId);
+    } else {
+      await addToSession(tabId);
+      // Sharing a page is the user saying its site is fine to work on.
+      const host = hostOf(tab?.url ?? '');
+      if (host) {
+        await allowSite(host);
+        renderAllowed((await loadSettings()).allowedSites);
+      }
+    }
     await render();
   });
   await render();
@@ -78,11 +118,15 @@ async function init(): Promise<void> {
   port.value = String(settings.port);
   token.value = settings.token;
   realInput.checked = settings.realInput;
+  askSites.checked = settings.siteAccess === 'ask';
+  blocked.value = settings.blockedSites.join('\n');
+  renderAllowed(settings.allowedSites);
   // Only Chromium has the debugger API behind this option.
   byId('real-input-row').hidden = !('debugger' in browser);
 
-  enabled.addEventListener('change', () => void save());
-  realInput.addEventListener('change', () => void save());
+  for (const toggle of [enabled, realInput, askSites]) {
+    toggle.addEventListener('change', () => void save());
+  }
   form.addEventListener('submit', (event) => {
     event.preventDefault();
     void save();

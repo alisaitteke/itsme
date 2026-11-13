@@ -3,6 +3,7 @@ import { type DebuggerApi, DebuggerSessions } from '../src/background/debugger/s
 
 function fakeApi() {
   let onDetach: (source: { tabId?: number }, reason: string) => void = () => {};
+  let onEvent: (source: { tabId?: number }, method: string, params?: object) => void = () => {};
   const api = {
     attach: vi.fn(async () => {}),
     detach: vi.fn(async () => {}),
@@ -12,8 +13,18 @@ function fakeApi() {
         onDetach = listener;
       },
     },
+    onEvent: {
+      addListener: (listener: typeof onEvent) => {
+        onEvent = listener;
+      },
+    },
   } satisfies DebuggerApi;
-  return { api, emitDetach: (tabId: number, reason: string) => onDetach({ tabId }, reason) };
+  return {
+    api,
+    emitDetach: (tabId: number, reason: string) => onDetach({ tabId }, reason),
+    emitEvent: (tabId: number, method: string, params?: object) =>
+      onEvent({ tabId }, method, params),
+  };
 }
 
 describe('DebuggerSessions', () => {
@@ -74,6 +85,39 @@ describe('DebuggerSessions', () => {
 
     await vi.advanceTimersByTimeAsync(200);
     expect(api.detach.mock.calls).toEqual([[{ tabId: 1 }], [{ tabId: 2 }]]);
+  });
+
+  it('passes debugger events to listeners and tells them about detaches', async () => {
+    const { api, emitEvent, emitDetach } = fakeApi();
+    const sessions = new DebuggerSessions(api, { onUserCancel: () => {} });
+    const events: unknown[] = [];
+    const detached: number[] = [];
+    sessions.onEvent((...event) => events.push(event));
+    sessions.onDetached((tabId) => detached.push(tabId));
+
+    await sessions.attach(1);
+    emitEvent(1, 'Log.entryAdded', { entry: {} });
+    emitDetach(1, 'target_closed');
+    emitDetach(1, 'target_closed');
+    expect(events).toEqual([[1, 'Log.entryAdded', { entry: {} }]]);
+    expect(detached).toEqual([1]);
+  });
+
+  it('stays attached longer once the idle time is extended', async () => {
+    const { api } = fakeApi();
+    const sessions = new DebuggerSessions(api, { onUserCancel: () => {}, idleMs: 1_000 });
+    await sessions.attach(1);
+    sessions.extendIdle(5_000);
+
+    await vi.advanceTimersByTimeAsync(4_000);
+    expect(api.detach).not.toHaveBeenCalled();
+    await vi.advanceTimersByTimeAsync(1_000);
+    expect(api.detach).toHaveBeenCalledTimes(1);
+
+    // Detaching puts the idle time back to the default.
+    await sessions.attach(2);
+    await vi.advanceTimersByTimeAsync(1_000);
+    expect(api.detach).toHaveBeenCalledTimes(2);
   });
 
   it('times out a command the tab never answers', async () => {

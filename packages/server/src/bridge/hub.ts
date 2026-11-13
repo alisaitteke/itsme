@@ -41,13 +41,16 @@ function send(socket: WebSocket, message: Message): void {
 /** Owns the bridge port. Extensions connect here, and so do other server processes. */
 export class Hub implements Link {
   readonly #options: LinkOptions;
+  readonly #onSuperseded: () => void;
   readonly #http: Server;
   readonly #wss = new WebSocketServer({ noServer: true });
   readonly #extensions: ExtensionConnection[] = [];
   #sweep: NodeJS.Timeout | undefined;
 
-  constructor(options: LinkOptions) {
+  /** `onSuperseded` fires when a server speaking a newer protocol asks for the port. */
+  constructor(options: LinkOptions, onSuperseded: () => void = () => {}) {
     this.#options = options;
+    this.#onSuperseded = onSuperseded;
     this.#http = createServer((_req, res) => {
       res.writeHead(426, { 'Content-Type': 'text/plain' }).end('WebSocket only\n');
     });
@@ -140,15 +143,19 @@ export class Hub implements Link {
         socket.close(CloseCode.BadHello, 'Expected hello');
         return;
       }
+      // Checked first, so that only a process holding the token can make this hub step aside.
+      if (!this.#tokenMatches(hello.token)) {
+        logger.warn(`Rejected ${role}: wrong or missing token`);
+        socket.close(CloseCode.Unauthorized, 'Token mismatch');
+        return;
+      }
       if (hello.protocolVersion !== PROTOCOL_VERSION) {
         const reason = `Server speaks protocol ${PROTOCOL_VERSION}, client ${hello.protocolVersion}`;
         logger.warn(`Rejected ${role}: ${reason}`);
         socket.close(CloseCode.ProtocolMismatch, reason);
-        return;
-      }
-      if (!this.#tokenMatches(hello.token)) {
-        logger.warn(`Rejected ${role}: wrong or missing token`);
-        socket.close(CloseCode.Unauthorized, 'Token mismatch');
+        // A newer server can't relay through this one, and an updated extension can't
+        // talk to it either, so holding on to the port would only block them both.
+        if (role === 'peer' && hello.protocolVersion > PROTOCOL_VERSION) this.#onSuperseded();
         return;
       }
 

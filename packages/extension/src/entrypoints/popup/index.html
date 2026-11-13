@@ -26,11 +26,32 @@
       </label>
       <label id="real-input-row" class="toggle" hidden>
         <span>
-          Real mouse and keyboard input
-          <small>The browser shows a debugging bar while it is in use.</small>
+          Use the debugger
+          <small>
+            Real mouse and keyboard input, console and network. The browser shows a debugging bar
+            while it is in use.
+          </small>
         </span>
         <input id="real-input" type="checkbox" />
       </label>
+      <label class="toggle">
+        <span>
+          Ask before using a new site
+          <small>A prompt appears on the page the first time.</small>
+        </span>
+        <input id="ask-sites" type="checkbox" />
+      </label>
+
+      <details>
+        <summary>Sites</summary>
+        <p class="label">Allowed</p>
+        <ul id="allowed"></ul>
+        <label>
+          <span>Blocked, one per line</span>
+          <textarea id="blocked" rows="3" spellcheck="false" placeholder="bank.example"></textarea>
+        </label>
+      </details>
+
       <label>
         <span>Port</span>
         <input id="port" type="number" min="1" max="65535" required />

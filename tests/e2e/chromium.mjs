@@ -1,9 +1,9 @@
-// Drives the built extension in a real Chromium through the built MCP server.
+// Drives the extension in a real Chromium through the built MCP server.
 // Needs a Chromium that still accepts --load-extension (Chrome for Testing, not Google Chrome):
 //   CHROME_PATH=/path/to/chromium pnpm test:e2e
 
-import { spawn } from 'node:child_process';
-import { existsSync, mkdtempSync, rmSync } from 'node:fs';
+import { spawn, spawnSync } from 'node:child_process';
+import { existsSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
 import { createServer } from 'node:http';
 import { tmpdir } from 'node:os';
 import { join, resolve } from 'node:path';
@@ -12,13 +12,12 @@ import { StdioClientTransport } from '@modelcontextprotocol/client/stdio';
 
 const root = resolve(import.meta.dirname, '../..');
 const serverEntry = join(root, 'packages/server/dist/cli.mjs');
-const extensionDir = join(root, 'packages/extension/.output/chrome-mv3');
+const extensionRoot = join(root, 'packages/extension');
+const extensionDir = join(extensionRoot, '.output/e2e/chrome-mv3');
 const chromePath = process.env.CHROME_PATH;
 
 if (!chromePath) throw new Error('Set CHROME_PATH to a Chrome for Testing or Chromium binary');
-for (const path of [serverEntry, extensionDir]) {
-  if (!existsSync(path)) throw new Error(`${path} is missing; run pnpm build first`);
-}
+if (!existsSync(serverEntry)) throw new Error(`${serverEntry} is missing; run pnpm build first`);
 
 const sleep = (ms) => new Promise((done) => setTimeout(done, ms));
 
@@ -42,7 +41,16 @@ const pageHtml = `<!doctype html><title>E2E page</title>
 <button ondblclick="log.textContent = 'double clicked'"
   oncontextmenu="event.preventDefault(); log.textContent = 'context menu'">Multi</button>
 <button onmouseover="log.textContent = 'hovered'">Hover target</button>
+<button onclick="fetch('/api/data?token=abc123').then(() => { log.textContent = 'fetched' })">
+  Fetch</button>
 <p id="log">no pointer event</p>
+<label>Attachment
+  <input type="file" hidden
+    onchange="uploaded.textContent = 'got ' + this.files[0].name + ' ' + this.files[0].size">
+</label>
+<p id="uploaded">no file</p>
+<button onclick="setTimeout(() => { late.textContent = 'late text here' }, 700)">Slow</button>
+<p id="late"></p>
 <input aria-label="Keys"
   onkeydown="keylog.textContent = 'key: ' + (event.metaKey ? 'meta+' : '') + event.key">
 <p id="keylog"></p>
@@ -57,6 +65,8 @@ const pageHtml = `<!doctype html><title>E2E page</title>
 <div style="height:3000px"></div>
 <p>Bottom text</p>
 <script>
+  console.log('hello from page', { a: 1 });
+  console.error('boom');
   let startX = null;
   knob.addEventListener('mousedown', (event) => { startX = event.clientX; });
   addEventListener('mouseup', (event) => {
@@ -76,6 +86,11 @@ const pages = {
 };
 
 const site = createServer((req, res) => {
+  if (req.url.startsWith('/api/')) {
+    res.writeHead(200, { 'Content-Type': 'application/json' });
+    res.end('{"ok":true}');
+    return;
+  }
   res.writeHead(200, { 'Content-Type': 'text/html' });
   res.end(pages[req.url] ?? pageHtml);
 });
@@ -90,45 +105,110 @@ async function freePort() {
   return port;
 }
 const debugPort = await freePort();
-// Not the default port: a browser the developer uses may be connected there, and
-// this script must never drive it.
+// Not the default port: the developer's own browser and server may be using it, and
+// this script must never touch either. The extension gets the port at build time, so
+// it doesn't try the default one even once.
 const bridgePort = await freePort();
+const build = spawnSync('pnpm', ['exec', 'wxt', 'build'], {
+  cwd: extensionRoot,
+  env: { ...process.env, WXT_ITSME_PORT: String(bridgePort), ITSME_OUT_DIR: '.output/e2e' },
+  encoding: 'utf8',
+});
+if (build.status !== 0) throw new Error(`Extension build failed:\n${build.stdout}${build.stderr}`);
 
-async function evaluate(target, expression) {
+/** A DevTools protocol connection to one target of the test browser. */
+async function connect(target) {
   const socket = new WebSocket(target.webSocketDebuggerUrl);
   await new Promise((done, fail) => {
     socket.onopen = done;
-    socket.onerror = () => fail(new Error('Cannot reach the service worker'));
+    socket.onerror = () => fail(new Error(`Cannot reach ${target.url}`));
   });
-  // Protocol events arrive on the same socket; only the message with our id is the answer.
-  const reply = new Promise((done) => {
-    socket.onmessage = (event) => {
-      const message = JSON.parse(event.data);
-      if (message.id === 1) done(message);
-    };
-  });
-  socket.send(
-    JSON.stringify({
-      id: 1,
-      method: 'Runtime.evaluate',
-      params: { expression, awaitPromise: true, returnByValue: true },
-    }),
-  );
-  const { result } = await reply;
-  socket.close();
-  if (!result || result.exceptionDetails) {
-    throw new Error(`Evaluation failed: ${result?.exceptionDetails?.exception?.description}`);
-  }
-  return result.result.value;
+  const waiting = new Map();
+  let lastId = 0;
+  // Protocol events arrive on the same socket; only messages with an id are answers.
+  socket.onmessage = (event) => {
+    const message = JSON.parse(event.data);
+    waiting.get(message.id)?.(message);
+    waiting.delete(message.id);
+  };
+  return {
+    async send(method, params = {}) {
+      const id = ++lastId;
+      const reply = new Promise((done) => waiting.set(id, done));
+      socket.send(JSON.stringify({ id, method, params }));
+      const message = await reply;
+      if (message.error) throw new Error(`${method}: ${message.error.message}`);
+      return message.result;
+    },
+    close: () => socket.close(),
+  };
 }
+
+const listTargets = async () => (await fetch(`http://127.0.0.1:${debugPort}/json/list`)).json();
+
+async function evaluate(target, expression) {
+  const session = await connect(target);
+  try {
+    const result = await session.send('Runtime.evaluate', {
+      expression,
+      awaitPromise: true,
+      returnByValue: true,
+    });
+    if (result.exceptionDetails) {
+      throw new Error(`Evaluation failed: ${result.exceptionDetails.exception?.description}`);
+    }
+    return result.result.value;
+  } finally {
+    session.close();
+  }
+}
+
+/**
+ * Runs `use` with a button of one of the extension's in-page overlays (null when it
+ * isn't showing). They sit in closed shadow roots, which only the DevTools protocol
+ * can see into.
+ */
+async function withOverlayButton(buttonId, use) {
+  const page = (await listTargets()).find(
+    (target) => target.type === 'page' && target.url.startsWith(base),
+  );
+  const session = await connect(page);
+  try {
+    const { root } = await session.send('DOM.getDocument', { depth: -1, pierce: true });
+    const search = (node) => {
+      if (node.attributes?.includes(buttonId)) return node;
+      for (const child of [...(node.children ?? []), ...(node.shadowRoots ?? [])]) {
+        const hit = search(child);
+        if (hit) return hit;
+      }
+      return null;
+    };
+    return await use(search(root), session);
+  } finally {
+    session.close();
+  }
+}
+
+const hasOverlayButton = (buttonId) => withOverlayButton(buttonId, (button) => button !== null);
+
+/** Presses an overlay button with a real click, as a person would. */
+const pressOverlayButton = (buttonId) =>
+  withOverlayButton(buttonId, async (button, session) => {
+    if (!button) return false;
+    const { model } = await session.send('DOM.getBoxModel', { nodeId: button.nodeId });
+    const [left, top, , , right, bottom] = model.content;
+    const press = { x: (left + right) / 2, y: (top + bottom) / 2, button: 'left', clickCount: 1 };
+    await session.send('Input.dispatchMouseEvent', { type: 'mousePressed', ...press });
+    await session.send('Input.dispatchMouseEvent', { type: 'mouseReleased', ...press });
+    return true;
+  });
 
 // Chromium ships extensions of its own, so pick the worker by the manifest name.
 async function findServiceWorker() {
   const deadline = Date.now() + 15_000;
   while (Date.now() < deadline) {
     try {
-      const targets = await (await fetch(`http://127.0.0.1:${debugPort}/json/list`)).json();
-      for (const target of targets) {
+      for (const target of await listTargets()) {
         if (target.type !== 'service_worker') continue;
         const name = await evaluate(target, 'chrome.runtime.getManifest().name').catch(() => '');
         if (name === 'itsme') return target;
@@ -149,13 +229,17 @@ const updateSettings = (patch) =>
   inExtension(`chrome.storage.local.get('settings').then(({ settings }) =>
     chrome.storage.local.set({ settings: { ...settings, ...${JSON.stringify(patch)} } }))`);
 
+// The only folder page_upload may read from in this run.
+const uploadDir = mkdtempSync(join(tmpdir(), 'itsme-e2e-uploads-'));
+writeFileSync(join(uploadDir, 'hello.txt'), 'hello world');
+
 async function startServer() {
   const client = new Client({ name: 'e2e', version: '0.0.0' });
   await client.connect(
     new StdioClientTransport({
       command: process.execPath,
       args: [serverEntry, '--port', String(bridgePort)],
-      env: { ...process.env, ITSME_LOG_LEVEL: 'warn' },
+      env: { ...process.env, ITSME_LOG_LEVEL: 'warn', ITSME_UPLOAD_DIRS: uploadDir },
       stderr: 'inherit',
     }),
   );
@@ -213,7 +297,8 @@ const chrome = spawn(
 );
 
 try {
-  await updateSettings({ port: bridgePort });
+  // Site prompts get their own section below; until then every site is allowed.
+  await updateSettings({ siteAccess: 'all' });
   const browser = await waitForBrowser(20_000);
   check('extension connects', browser !== null);
   if (!browser) throw new Error('The extension never connected');
@@ -342,7 +427,8 @@ try {
   check('an unknown key is refused', unknownKey.text.startsWith('INVALID_PARAMS'), unknownKey.text);
 
   const knobRef = refIn(text, /\[(e\d+)\] slider "Knob"/);
-  const drag = await on('page_drag', { from: { ref: knobRef }, to: { ref: multiRef } });
+  // The field just above the track: both ends of a drag have to be on screen together.
+  const drag = await on('page_drag', { from: { ref: knobRef }, to: { ref: keysRef } });
   text = await outline();
   check(
     'page_drag moves with the button held',
@@ -375,6 +461,96 @@ try {
     both.text,
   );
 
+  // --- console and network ---
+  let logs = await on('page_console');
+  check(
+    'page_console returns what the page logged before recording',
+    logs.text.includes('[log] hello from page') && logs.text.includes('[error] boom'),
+    logs.text,
+  );
+  logs = await on('page_console', { onlyErrors: true });
+  check(
+    'page_console filters errors',
+    logs.text.includes('boom') && !logs.text.includes('hello'),
+    logs.text,
+  );
+  logs = await on('page_console', { pattern: 'HELLO' });
+  check(
+    'page_console filters by pattern',
+    logs.text.includes('hello') && !logs.text.includes('boom'),
+    logs.text,
+  );
+
+  let requests = await on('page_network');
+  check(
+    'page_network says how long it has recorded',
+    requests.text.startsWith('Recording for'),
+    requests.text,
+  );
+  await on('page_click', { ref: refIn(text, /\[(e\d+)\] button "Fetch"/) });
+  await sleep(500);
+  requests = await on('page_network', { urlPattern: '/api/' });
+  check(
+    'page_network records a fetch and redacts its token',
+    requests.text.includes(`200 GET ${base}/api/data?token=REDACTED (fetch`),
+    requests.text,
+  );
+
+  // --- upload, wait, batch ---
+  text = await outline();
+  const fileRef = refIn(text, /\[(e\d+)\] fileinput "Attachment" files=0/);
+  check('snapshot shows a hidden file input', Boolean(fileRef), text);
+  const uploaded = await on('page_upload', { ref: fileRef, paths: [join(uploadDir, 'hello.txt')] });
+  check(
+    'page_upload fills the file input',
+    uploaded.text === 'Uploaded hello.txt' && (await outline()).includes('text "got hello.txt 11"'),
+    uploaded.text,
+  );
+  const outside = await on('page_upload', { ref: fileRef, paths: [serverEntry] });
+  check(
+    'page_upload refuses a file outside the allowed folder',
+    outside.text.includes('outside the folders'),
+    outside.text,
+  );
+
+  await on('page_click', { ref: refIn(text, /\[(e\d+)\] button "Slow"/) });
+  const waited = await on('page_wait', { text: 'late text here' });
+  check(
+    'page_wait waits for text to appear',
+    waited.text === 'OK' && (await outline()).includes('late text here'),
+    waited.text,
+  );
+  const timedOut = await on('page_wait', { text: 'never shown', timeoutMs: 400 });
+  check('page_wait reports a timeout', timedOut.text.startsWith('Timed out'), timedOut.text);
+
+  const batch = await call('batch', {
+    steps: [
+      { tool: 'page_type', args: { tabId: tab.id, ref: nameRef, text: 'Batch' } },
+      { tool: 'page_click', args: { tabId: tab.id, ref: greetRef } },
+      { tool: 'page_find', args: { tabId: tab.id, query: 'Hello, Batch' } },
+    ],
+  });
+  check(
+    'batch runs its steps in order',
+    !batch.isError &&
+      batch.text.includes('--- 3. page_find ---') &&
+      batch.text.includes('text "Hello, Batch!"'),
+    batch.text,
+  );
+  const broken = await call('batch', {
+    steps: [
+      { tool: 'page_click', args: { tabId: tab.id, ref: 'e99999' } },
+      { tool: 'page_text', args: { tabId: tab.id } },
+    ],
+  });
+  check(
+    'batch stops at the first failure',
+    broken.isError &&
+      broken.text.includes('1 later step(s) were not run') &&
+      !broken.text.includes('page_text ---'),
+    broken.text,
+  );
+
   // --- scrolling ---
   let scrolled = await json('page_scroll', { tabId: tab.id, direction: 'down', amount: 10_000 });
   check('page_scroll moves the page', scrolled.moved === true);
@@ -397,7 +573,15 @@ try {
   check('scripted double click', (await outline()).includes('text "double clicked"'));
   const noDrag = await on('page_drag', { from: { ref: knobRef }, to: { ref: multiRef } });
   check('page_drag needs real input', noDrag.text.startsWith('UNSUPPORTED'), noDrag.text);
+  const noConsole = await on('page_console');
+  check(
+    'page_console needs the debugger',
+    noConsole.text.startsWith('UNSUPPORTED'),
+    noConsole.text,
+  );
   await updateSettings({ realInput: true });
+  // Switching the debugger off stopped the recording; start it again before the page loads below.
+  await on('page_network');
 
   // --- navigation ---
   await on('page_click', { ref: linkRef });
@@ -418,6 +602,55 @@ try {
   check('page_history goes forward', forward.text.includes('"Second"'), forward.text);
   const navigated = await on('page_navigate', { url: `${base}/` });
   check('page_navigate loads a URL', navigated.text.includes('"E2E page"'), navigated.text);
+
+  requests = await on('page_network', { urlPattern: base });
+  check(
+    'page_network records a page load',
+    requests.text.includes(`200 GET ${base}/ (document`),
+    requests.text,
+  );
+
+  // --- site permission ---
+  await updateSettings({ siteAccess: 'ask', allowedSites: [], blockedSites: [] });
+  let waiting = on('page_snapshot');
+  await sleep(1_000);
+  check('an unknown site gets a prompt on the page', await pressOverlayButton('itsme-deny'));
+  let answer = await waiting;
+  check('"Not now" refuses the call', answer.text.startsWith('SITE_NOT_ALLOWED'), answer.text);
+
+  waiting = on('page_snapshot');
+  await sleep(1_000);
+  await pressOverlayButton('itsme-allow');
+  answer = await waiting;
+  check('"Allow" lets the call through', answer.text.includes('heading "Greeter"'), answer.text);
+  const allowedSites = await inExtension(
+    `chrome.storage.local.get('settings').then(({ settings }) => settings.allowedSites)`,
+  );
+  check('the allowed site is remembered', allowedSites.includes('127.0.0.1'), String(allowedSites));
+  check('an allowed site needs no prompt', (await outline()).includes('heading "Greeter"'));
+
+  await updateSettings({ blockedSites: ['127.0.0.1'] });
+  answer = await on('page_snapshot');
+  check('a blocked site is refused', answer.text.includes('blocked list'), answer.text);
+  answer = await on('page_navigate', { url: `${base}/second` });
+  check(
+    'navigating to a blocked site is refused',
+    answer.text.startsWith('SITE_NOT_ALLOWED'),
+    answer.text,
+  );
+  await updateSettings({ siteAccess: 'all', blockedSites: [] });
+
+  // --- badge and stop ---
+  await outline();
+  check('the page shows that itsme is using it', await hasOverlayButton('itsme-stop'));
+  await on('page_screenshot');
+  check('the badge is hidden for a screenshot', !(await hasOverlayButton('itsme-stop')));
+  await outline();
+  await pressOverlayButton('itsme-stop');
+  await sleep(1_000);
+  check('Stop disconnects the browser', (await json('browser_status')).browsers.length === 0);
+  await updateSettings({ enabled: true });
+  check('switching it back on reconnects', (await waitForBrowser(15_000)) !== null);
 
   // --- sharing and closing ---
   await inExtension(`chrome.tabGroups.query({ title: 'itsme' }).then(([group]) =>
@@ -455,6 +688,7 @@ try {
   site.close();
   await sleep(300);
   rmSync(profileDir, { recursive: true, force: true });
+  rmSync(uploadDir, { recursive: true, force: true });
 }
 
 process.exit(failures > 0 ? 1 : 0);

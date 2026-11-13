@@ -3,6 +3,7 @@ import {
   BridgeError,
   type BrowserInfo,
   browserInfoSchema,
+  CloseCode,
   decodeMessage,
   encodeMessage,
   HELLO_TIMEOUT_MS,
@@ -56,7 +57,13 @@ export class PeerLink implements Link {
       };
 
       socket.once('error', (error) => fail(error.message));
-      socket.once('close', (code, reason) => fail(`Hub closed the connection (${code} ${reason})`));
+      socket.once('close', (code, reason) =>
+        fail(
+          code === CloseCode.ProtocolMismatch
+            ? `an itsme server of another version holds it (${reason}). Close the MCP client that started it`
+            : `the hub closed the connection (${code} ${reason})`,
+        ),
+      );
       socket.once('open', () => {
         socket.send(
           encodeMessage({ type: 'hello', protocolVersion: PROTOCOL_VERSION, token: options.token }),
@@ -66,7 +73,7 @@ export class PeerLink implements Link {
         try {
           if (decodeMessage(String(data)).type !== 'welcome') throw new Error();
         } catch {
-          fail('Port is in use by something other than an itsme hub');
+          fail('something other than an itsme server is using it');
           return;
         }
         clearTimeout(timer);

@@ -1,11 +1,18 @@
 import { BRIDGE_HOST, type BrowserInfo, EXTENSION_PATH } from '@itsme/protocol';
 import { browser } from 'wxt/browser';
-import { isStatusRequest, type StatusResponse } from '../shared/runtime-messages.ts';
-import { loadSettings, onSettingsChanged } from '../shared/settings.ts';
+import {
+  isSiteDecision,
+  isStatusRequest,
+  isStopRequest,
+  type StatusResponse,
+} from '../shared/runtime-messages.ts';
+import { loadSettings, onSettingsChanged, saveSettings } from '../shared/settings.ts';
+import { hostOf } from '../shared/sites.ts';
 import { BridgeConnection } from './connection.ts';
+import { detachDebugger, setupDebugger } from './debugger/index.ts';
 import { handlers } from './handlers/index.ts';
-import { detachDebugger, setupInput } from './input/index.ts';
 import { createRouter } from './router.ts';
+import { recordDecision } from './site-access.ts';
 
 const RECONNECT_ALARM = 'itsme/reconnect';
 
@@ -49,7 +56,7 @@ async function configure(): Promise<void> {
 
 /** Runs each time the background wakes up; all listeners must be added synchronously. */
 export function startBackground(): void {
-  setupInput();
+  setupDebugger();
   let configured = configure();
 
   // Having these listeners is what makes the browser start the background at launch.
@@ -67,7 +74,18 @@ export function startBackground(): void {
     configured = configured.then(configure, configure);
   });
 
-  browser.runtime.onMessage.addListener((message, _sender, sendResponse) => {
+  browser.runtime.onMessage.addListener((message, sender, sendResponse) => {
+    if (isSiteDecision(message)) {
+      // The site is whatever page the answer came from, never something the message claims.
+      const host = sender.frameId === 0 ? hostOf(sender.tab?.url ?? '') : null;
+      if (host) void recordDecision(host, message.allow);
+      return;
+    }
+    if (isStopRequest(message)) {
+      // Stop means stop: switch the bridge off until the user turns it back on in the popup.
+      void saveSettings({ enabled: false });
+      return;
+    }
     if (!isStatusRequest(message)) return;
     const reply = () => sendResponse((connection?.status ?? null) satisfies StatusResponse);
     configured.then(reply, reply);

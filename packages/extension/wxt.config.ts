@@ -2,6 +2,7 @@ import { defineConfig } from 'wxt';
 
 export default defineConfig({
   srcDir: 'src',
+  outDir: process.env.ITSME_OUT_DIR ?? '.output',
   manifest: ({ browser }) => ({
     name: 'itsme',
     description: 'Lets an MCP server on this machine drive the browser.',

@@ -1,6 +1,6 @@
 import type { Match } from '@itsme/protocol';
 import { isInteractive, isLeaf, nameOf, roleOf, stateOf } from './describe.ts';
-import { clean, composedChildren, frameDocument, isRendered, visibleText } from './dom.ts';
+import { clean, composedChildren, frameDocument, isInput, isRendered, visibleText } from './dom.ts';
 import type { AgentCall, AgentResults } from './messages.ts';
 import { refFor, resolveRef } from './refs.ts';
 
@@ -17,6 +17,9 @@ const BLOCK_TAGS = new Set([
   'fieldset', 'figcaption', 'figure', 'footer', 'form', 'header', 'hr', 'li', 'main', 'nav',
   'ol', 'p', 'pre', 'section', 'table', 'td', 'th', 'tr', 'ul',
 ]);
+
+// Pages hide their file inputs behind styled buttons, but an upload needs the input itself.
+const isFileInput = (el: Element) => isInput(el) && el.type === 'file';
 
 function describeLine(el: Element, role: string): string {
   const state = stateOf(el, role);
@@ -75,7 +78,8 @@ class OutlineWriter {
 type SnapshotOptions = Extract<AgentCall, { kind: 'snapshot' }>;
 
 function walk(el: Element, depth: number, out: OutlineWriter, options: SnapshotOptions): void {
-  if (out.truncated || SKIPPED_TAGS.has(el.localName) || !isRendered(el)) return;
+  if (out.truncated || SKIPPED_TAGS.has(el.localName)) return;
+  if (!isRendered(el) && !isFileInput(el)) return;
 
   const interactiveOnly = options.filter === 'interactive';
   const role = roleOf(el);
@@ -120,7 +124,8 @@ export function find(query: string): AgentResults['find'] {
   let more = false;
 
   const visit = (el: Element): void => {
-    if (more || SKIPPED_TAGS.has(el.localName) || !isRendered(el)) return;
+    if (more || SKIPPED_TAGS.has(el.localName)) return;
+    if (!isRendered(el) && !isFileInput(el)) return;
     const role = roleOf(el);
     let match: Match | null = null;
     if (role !== null) {
@@ -145,6 +150,10 @@ export function find(query: string): AgentResults['find'] {
 
   if (document.body) visit(document.body);
   return { matches, more };
+}
+
+export function hasText(text: string): boolean {
+  return visibleText(document.body).toLowerCase().includes(text.toLowerCase());
 }
 
 export function readText(maxChars: number): AgentResults['text'] {

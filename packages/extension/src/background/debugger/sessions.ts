@@ -14,6 +14,9 @@ export interface DebuggerApi {
   detach(target: Debuggee): Promise<void>;
   sendCommand(target: Debuggee, method: string, params?: object): Promise<unknown>;
   onDetach: { addListener(listener: (source: Debuggee, reason: string) => void): void };
+  onEvent: {
+    addListener(listener: (source: Debuggee, method: string, params?: object) => void): void;
+  };
 }
 
 export interface SessionsOptions {
@@ -22,23 +25,43 @@ export interface SessionsOptions {
   idleMs?: number;
 }
 
+export type EventListener = (tabId: number, method: string, params: object) => void;
+
 /**
  * Attaches the debugger to tabs on demand and lets go of them when nothing has used
  * them for a while, since the browser shows a warning bar for as long as one is attached.
  */
 export class DebuggerSessions {
   readonly #api: DebuggerApi;
-  readonly #options: SessionsOptions;
+  readonly #defaultIdleMs: number;
   readonly #attached = new Map<number, Promise<void>>();
+  readonly #eventListeners: EventListener[] = [];
+  readonly #detachListeners: Array<(tabId: number) => void> = [];
+  #idleMs: number;
   #idleTimer: ReturnType<typeof setTimeout> | undefined;
 
   constructor(api: DebuggerApi, options: SessionsOptions) {
     this.#api = api;
-    this.#options = options;
+    this.#defaultIdleMs = options.idleMs ?? DEFAULT_IDLE_MS;
+    this.#idleMs = this.#defaultIdleMs;
+
     api.onDetach.addListener((source, reason) => {
-      if (source.tabId !== undefined) this.#attached.delete(source.tabId);
+      if (source.tabId !== undefined) this.#forget(source.tabId);
       if (reason === 'canceled_by_user') options.onUserCancel();
     });
+    api.onEvent.addListener((source, method, params) => {
+      if (source.tabId === undefined) return;
+      for (const listener of this.#eventListeners) listener(source.tabId, method, params ?? {});
+    });
+  }
+
+  onEvent(listener: EventListener): void {
+    this.#eventListeners.push(listener);
+  }
+
+  /** Called whenever a tab stops being attached, whatever the reason. */
+  onDetached(listener: (tabId: number) => void): void {
+    this.#detachListeners.push(listener);
   }
 
   /** Rejects when the tab can't be debugged, e.g. a browser page or one another debugger holds. */
@@ -69,10 +92,17 @@ export class DebuggerSessions {
     }
   }
 
+  /** Stays attached longer between uses, for work that is only useful while attached. */
+  extendIdle(idleMs: number): void {
+    this.#idleMs = Math.max(this.#idleMs, idleMs);
+    this.#touch();
+  }
+
   async detachAll(): Promise<void> {
     clearTimeout(this.#idleTimer);
+    this.#idleMs = this.#defaultIdleMs;
     const tabIds = [...this.#attached.keys()];
-    this.#attached.clear();
+    for (const tabId of tabIds) this.#forget(tabId);
     await Promise.allSettled(tabIds.map((tabId) => this.#api.detach({ tabId })));
   }
 
@@ -84,11 +114,13 @@ export class DebuggerSessions {
       .catch(() => {});
   }
 
+  #forget(tabId: number): void {
+    if (!this.#attached.delete(tabId)) return;
+    for (const listener of this.#detachListeners) listener(tabId);
+  }
+
   #touch(): void {
     clearTimeout(this.#idleTimer);
-    this.#idleTimer = setTimeout(
-      () => void this.detachAll(),
-      this.#options.idleMs ?? DEFAULT_IDLE_MS,
-    );
+    this.#idleTimer = setTimeout(() => void this.detachAll(), this.#idleMs);
   }
 }

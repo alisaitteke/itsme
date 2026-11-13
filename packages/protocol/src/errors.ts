@@ -9,6 +9,7 @@ export const errorCodeSchema = z.enum([
   'UNSUPPORTED',
   'TAB_NOT_FOUND',
   'TAB_NOT_SHARED',
+  'SITE_NOT_ALLOWED',
   'ELEMENT_NOT_FOUND',
   'PAGE_NOT_ACCESSIBLE',
   'INTERNAL',

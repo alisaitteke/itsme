@@ -5,6 +5,7 @@ import { Bridge } from './bridge/bridge.ts';
 import { type CliAction, parseCli, usage } from './config.ts';
 import { createLogger } from './logger.ts';
 import { createMcpServer } from './mcp/server.ts';
+import { resolveUploadDirs } from './mcp/uploads.ts';
 
 async function main(): Promise<void> {
   let action: CliAction;
@@ -34,7 +35,8 @@ async function main(): Promise<void> {
   });
   await bridge.start();
 
-  const server = createMcpServer(bridge, pkg.version);
+  const uploadDirs = await resolveUploadDirs(config.uploadDirs);
+  const server = createMcpServer(bridge, pkg.version, { uploadDirs });
   await server.connect(new StdioServerTransport());
 
   let closing = false;

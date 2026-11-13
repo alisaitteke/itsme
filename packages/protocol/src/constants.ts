@@ -1,5 +1,5 @@
 /** Bumped on any wire change the other side can't ignore. */
-export const PROTOCOL_VERSION = 2;
+export const PROTOCOL_VERSION = 3;
 
 export const DEFAULT_PORT = 47821;
 export const BRIDGE_HOST = '127.0.0.1';

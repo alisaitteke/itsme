@@ -2,7 +2,13 @@ import type { Modifier, Target } from '@itsme/protocol';
 import { isShortcut, type KeyInfo } from '../shared/keys.ts';
 import { composedParent, deepActiveElement, isHtml, isInput, isSelect, isTextArea } from './dom.ts';
 import { centerOf, elementFor, inViewport, isHittable, isPoint } from './geometry.ts';
-import { AgentError, type AgentResults, type Button, type Direction } from './messages.ts';
+import {
+  AgentError,
+  type AgentResults,
+  type Button,
+  type Direction,
+  type UploadFile,
+} from './messages.ts';
 import { resolveRef } from './refs.ts';
 
 const BUTTON_CODES: Record<Button, number> = { left: 0, middle: 1, right: 2 };
@@ -238,4 +244,26 @@ export function scroll(
     behavior: 'instant',
   });
   return { moved: (vertical ? area.scrollTop : area.scrollLeft) !== before };
+}
+
+/** Puts files into a file input, as if the user had picked them in the file dialog. */
+export function upload(ref: string, files: UploadFile[]): void {
+  const input = resolveRef(ref);
+  if (!isInput(input) || input.type !== 'file') {
+    throw new AgentError('INVALID_PARAMS', `Element ${ref} is not a file input`);
+  }
+  if (files.length > 1 && !input.multiple) {
+    throw new AgentError('INVALID_PARAMS', 'This file input takes a single file');
+  }
+
+  // Built in the input's own window, which differs from this one inside an iframe.
+  const view = input.ownerDocument.defaultView ?? window;
+  const transfer = new view.DataTransfer();
+  for (const file of files) {
+    const bytes = Uint8Array.from(atob(file.data), (char) => char.charCodeAt(0));
+    transfer.items.add(new view.File([bytes], file.name, { type: file.mimeType }));
+  }
+  input.files = transfer.files;
+  input.dispatchEvent(new Event('input', { bubbles: true }));
+  input.dispatchEvent(new Event('change', { bubbles: true }));
 }

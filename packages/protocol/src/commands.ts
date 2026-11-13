@@ -169,6 +169,71 @@ export const commands = {
     }),
     result: empty,
   }),
+  'page.wait': command({
+    params: z.object({
+      tabId: optionalTabId,
+      text: z.string().min(1).optional().describe('Wait until this text is on the page'),
+      gone: z.boolean().default(false).describe('Wait until the text has left the page instead'),
+      timeoutMs: z
+        .number()
+        .int()
+        .min(100)
+        .max(20_000)
+        .default(5_000)
+        .describe('Longest wait; with no text, simply wait this long'),
+    }),
+    result: z.object({ met: z.boolean().describe('False when the time ran out first') }),
+  }),
+  'page.upload': command({
+    params: z.object({
+      tabId: optionalTabId,
+      ref: ref.describe('The file input, from page_snapshot'),
+      files: z.array(z.object({ name: z.string(), mimeType: z.string(), data: z.string() })).min(1),
+    }),
+    result: empty,
+  }),
+  'page.console': command({
+    params: z.object({
+      tabId: optionalTabId,
+      pattern: z.string().optional().describe('Regular expression the message must match'),
+      onlyErrors: z.boolean().default(false),
+      limit: z.number().int().min(1).max(500).default(100).describe('Newest messages to return'),
+      clear: z.boolean().default(false).describe('Forget the messages after returning them'),
+    }),
+    result: z.object({
+      entries: z.array(
+        z.object({
+          level: z.enum(['debug', 'info', 'log', 'warning', 'error']),
+          text: z.string(),
+          source: z.string().optional(),
+        }),
+      ),
+      total: z.number().int(),
+    }),
+  }),
+  'page.network': command({
+    params: z.object({
+      tabId: optionalTabId,
+      urlPattern: z.string().optional().describe('Text the request URL must contain'),
+      limit: z.number().int().min(1).max(500).default(100).describe('Newest requests to return'),
+      clear: z.boolean().default(false).describe('Forget the requests after returning them'),
+    }),
+    result: z.object({
+      requests: z.array(
+        z.object({
+          method: z.string(),
+          url: z.string(),
+          type: z.string(),
+          status: z.number().int().optional(),
+          error: z.string().optional(),
+          durationMs: z.number().optional(),
+          bytes: z.number().optional(),
+        }),
+      ),
+      total: z.number().int(),
+      recordingMs: z.number().int().describe('How long requests have been recorded'),
+    }),
+  }),
   'page.screenshot': command({
     params: z.object({ tabId: optionalTabId }),
     result: z.object({

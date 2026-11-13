@@ -2,6 +2,7 @@ import type { Tab } from '@itsme/protocol';
 import { browser } from 'wxt/browser';
 import type { Handlers } from '../router.ts';
 import { addToSession, sessionTab, sessionTabs } from '../session-tabs.ts';
+import { refuseBlocked } from '../site-access.ts';
 import { type BrowserTab, getTab, toTab, watchLoad } from '../tabs.ts';
 
 async function createTab(url: string, active: boolean): Promise<BrowserTab> {
@@ -18,6 +19,7 @@ async function createTab(url: string, active: boolean): Promise<BrowserTab> {
 
 /** Opens a URL in a new tab of the itsme group and waits for it to load. */
 export async function openSessionTab(url: string, active: boolean): Promise<Tab> {
+  await refuseBlocked(url);
   const created = await createTab(url, active);
   await addToSession(created.id);
   await watchLoad(created.id, true);

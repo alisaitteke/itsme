@@ -100,6 +100,56 @@ label.toggle {
   gap: 10px;
 }
 
+details {
+  padding: 8px 10px;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+}
+
+summary {
+  cursor: pointer;
+  font-weight: 600;
+}
+
+details[open] summary {
+  margin-bottom: 8px;
+}
+
+.label {
+  margin: 0 0 4px;
+}
+
+#allowed {
+  margin: 0 0 10px;
+  padding: 0;
+  list-style: none;
+  color: var(--muted);
+}
+
+#allowed li {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  color: var(--text);
+}
+
+button.remove {
+  padding: 0 6px;
+  font-weight: 400;
+  color: var(--muted);
+  background: transparent;
+}
+
+textarea {
+  padding: 6px 8px;
+  font: inherit;
+  color: inherit;
+  background: transparent;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  resize: vertical;
+}
+
 label[hidden] {
   display: none;
 }

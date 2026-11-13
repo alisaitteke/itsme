@@ -29,7 +29,11 @@ describe('MCP server', () => {
 
   it('exposes one tool per command plus browser_status', async () => {
     const { tools } = await client.listTools();
-    const expected = ['browser_status', ...commandNames.map((name) => name.replace('.', '_'))];
+    const expected = [
+      'browser_status',
+      'batch',
+      ...commandNames.map((name) => name.replace('.', '_')),
+    ];
     expect(tools.map((tool) => tool.name).sort()).toEqual(expected.sort());
     for (const tool of tools) expect(tool.inputSchema.type).toBe('object');
   });
@@ -103,6 +107,98 @@ describe('MCP server', () => {
           'Truncated. Pass ref to read one part, or raise maxChars.',
         ].join('\n'),
       },
+    ]);
+  });
+
+  it("runs a batch in order and applies each tool's defaults", async () => {
+    const calls: unknown[] = [];
+    const record = (name: string, result: object) => (params: unknown) => {
+      calls.push([name, params]);
+      return result;
+    };
+    await connectFakeExtension(port, {
+      'page.type': record('type', {}),
+      'page.press': record('press', {}),
+      'page.find': record('find', {
+        matches: [{ ref: 'e4', role: 'text', name: 'Saved' }],
+        more: false,
+      }),
+    });
+
+    const result = await client.callTool({
+      name: 'batch',
+      arguments: {
+        steps: [
+          { tool: 'page_type', args: { ref: 'e1', text: 'hi' } },
+          { tool: 'page_press', args: { key: 'Enter' } },
+          { tool: 'page_find', args: { query: 'saved' } },
+        ],
+      },
+    });
+
+    expect(result.isError).toBeFalsy();
+    expect((result.content as Array<{ text: string }>).map((part) => part.text)).toEqual([
+      '--- 1. page_type ---',
+      'OK',
+      '--- 2. page_press ---',
+      'OK',
+      '--- 3. page_find ---',
+      '[e4] text "Saved"',
+    ]);
+    expect(calls).toEqual([
+      ['type', { ref: 'e1', text: 'hi', clear: true, submit: false }],
+      ['press', { key: 'Enter', modifiers: [], count: 1 }],
+      ['find', { query: 'saved' }],
+    ]);
+  });
+
+  it('stops a batch at the first failing step', async () => {
+    let clicked = false;
+    await connectFakeExtension(port, {
+      'page.click': () => {
+        clicked = true;
+        return {};
+      },
+    });
+
+    const result = await client.callTool({
+      name: 'batch',
+      arguments: {
+        steps: [
+          { tool: 'page_press', args: {} },
+          { tool: 'page_click', args: { ref: 'e1' } },
+          { tool: 'batch', args: { steps: [] } },
+        ],
+      },
+    });
+
+    expect(result.isError).toBe(true);
+    const [failure] = result.content as Array<{ text: string }>;
+    expect(failure?.text).toMatch(/^--- 1\. page_press failed ---\nINVALID_PARAMS/);
+    expect(failure?.text).toContain('2 later step(s) were not run');
+    expect(clicked).toBe(false);
+  });
+
+  it('does not let a batch call itself or an unknown tool', async () => {
+    await connectFakeExtension(port);
+    const result = await client.callTool({
+      name: 'batch',
+      arguments: { steps: [{ tool: 'batch', args: { steps: [] } }] },
+    });
+    expect(result.content).toEqual([
+      { type: 'text', text: expect.stringContaining('No tool named "batch"') },
+    ]);
+  });
+
+  it('keeps uploads off unless a folder is allowed', async () => {
+    await connectFakeExtension(port, { 'page.upload': () => ({}) });
+    const result = await client.callTool({
+      name: 'page_upload',
+      arguments: { ref: 'e1', paths: ['/tmp/x.txt'] },
+    });
+    expect(result.isError).toBe(true);
+    expect(result.content).toEqual([
+      { type: 'text', text: expect.stringContaining('ITSME_UPLOAD_DIRS') },
     ]);
   });
 
