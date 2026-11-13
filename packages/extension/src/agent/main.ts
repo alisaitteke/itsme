@@ -1,22 +1,36 @@
 import { browser } from 'wxt/browser';
-import { click, focus, locate, type } from './actions.ts';
+import { click, focus, hover, locate, press, scroll, type } from './actions.ts';
 import { AgentError, type AgentRequest, type AgentResponse, isAgentRequest } from './messages.ts';
-import { takeSnapshot } from './snapshot.ts';
+import { find, readText, takeSnapshot } from './outline.ts';
 
 function run(request: AgentRequest): unknown {
   switch (request.kind) {
     case 'snapshot':
-      return takeSnapshot(request.maxTextLength);
+      return takeSnapshot(request);
+    case 'find':
+      return find(request.query);
+    case 'text':
+      return readText(request.maxChars);
+    case 'viewport':
+      return { width: innerWidth, height: innerHeight };
+    case 'locate':
+      return locate(request.target, request.scroll);
     case 'click':
-      click(request.ref);
+      click(request.target, request.button, request.count, request.modifiers);
       return {};
+    case 'hover':
+      hover(request.target);
+      return {};
+    case 'focus':
+      return focus(request.ref, request.select);
     case 'type':
       type(request.ref, request.text, request.clear, request.submit);
       return {};
-    case 'locate':
-      return locate(request.ref);
-    case 'focus':
-      return focus(request.ref, request.select);
+    case 'press':
+      press(request.key, request.modifiers, request.count);
+      return {};
+    case 'scroll':
+      return scroll(request.ref, request.direction, request.amount);
   }
 }
 

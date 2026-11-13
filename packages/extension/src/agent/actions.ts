@@ -1,25 +1,57 @@
-import { AgentError, type AgentResults } from './messages.ts';
+import type { Modifier, Target } from '@itsme/protocol';
+import { isShortcut, type KeyInfo } from '../shared/keys.ts';
+import { composedParent, deepActiveElement, isHtml, isInput, isSelect, isTextArea } from './dom.ts';
+import { centerOf, elementFor, inViewport, isHittable, isPoint } from './geometry.ts';
+import { AgentError, type AgentResults, type Button, type Direction } from './messages.ts';
 import { resolveRef } from './refs.ts';
 
-function fire(element: Element, type: string, init: KeyboardEventInit = {}): boolean {
-  return element.dispatchEvent(
-    new KeyboardEvent(type, { bubbles: true, cancelable: true, composed: true, ...init }),
-  );
+const BUTTON_CODES: Record<Button, number> = { left: 0, middle: 1, right: 2 };
+const ENTER: KeyInfo = { key: 'Enter', code: 'Enter', keyCode: 13, text: '\r' };
+
+function reveal(el: Element): void {
+  el.scrollIntoView({ block: 'center', inline: 'center', behavior: 'instant' });
 }
 
-export function click(ref: string): void {
-  const element = resolveRef(ref);
-  element.scrollIntoView({ block: 'center', inline: 'center', behavior: 'instant' });
+function modifierFlags(modifiers: readonly Modifier[]) {
+  return {
+    altKey: modifiers.includes('alt'),
+    ctrlKey: modifiers.includes('ctrl'),
+    metaKey: modifiers.includes('meta'),
+    shiftKey: modifiers.includes('shift'),
+  };
+}
 
-  const rect = element.getBoundingClientRect();
+/** Scrolls a ref into view and reports where a real pointer should press. */
+export function locate(target: Target, scroll: boolean): AgentResults['locate'] {
+  if (target.ref === undefined) {
+    if (!isPoint(target)) throw new AgentError('INVALID_PARAMS', 'Give a ref, or both x and y');
+    return { x: target.x, y: target.y, hittable: true, inViewport: inViewport(target) };
+  }
+  const el = resolveRef(target.ref);
+  if (scroll) reveal(el);
+  const point = centerOf(el);
+  return { ...point, hittable: isHittable(el, point), inViewport: inViewport(point) };
+}
+
+export function click(
+  target: Target,
+  button: Button,
+  count: number,
+  modifiers: readonly Modifier[],
+): void {
+  const el = elementFor(target);
+  if (target.ref !== undefined) reveal(el);
+
+  const point = isPoint(target) ? target : centerOf(el);
   const init: MouseEventInit = {
     bubbles: true,
     cancelable: true,
     composed: true,
-    view: window,
-    button: 0,
-    clientX: rect.left + rect.width / 2,
-    clientY: rect.top + rect.height / 2,
+    view: el.ownerDocument.defaultView,
+    button: BUTTON_CODES[button],
+    clientX: point.x,
+    clientY: point.y,
+    ...modifierFlags(modifiers),
   };
   const pointer: PointerEventInit = {
     ...init,
@@ -28,21 +60,65 @@ export function click(ref: string): void {
     isPrimary: true,
   };
 
-  // Many widgets act on press rather than on click, so send the whole sequence.
-  element.dispatchEvent(new PointerEvent('pointerdown', pointer));
-  element.dispatchEvent(new MouseEvent('mousedown', init));
-  if (element instanceof HTMLElement) element.focus({ preventScroll: true });
-  element.dispatchEvent(new PointerEvent('pointerup', pointer));
-  element.dispatchEvent(new MouseEvent('mouseup', init));
-  if (element instanceof HTMLElement) element.click();
-  else element.dispatchEvent(new MouseEvent('click', init));
+  for (let press = 1; press <= count; press++) {
+    const detail = { detail: press };
+    // Many widgets act on press rather than on click, so send the whole sequence.
+    el.dispatchEvent(new PointerEvent('pointerdown', pointer));
+    el.dispatchEvent(new MouseEvent('mousedown', { ...init, ...detail }));
+    if (isHtml(el)) el.focus({ preventScroll: true });
+    el.dispatchEvent(new PointerEvent('pointerup', pointer));
+    el.dispatchEvent(new MouseEvent('mouseup', { ...init, ...detail }));
+
+    if (button === 'right') el.dispatchEvent(new MouseEvent('contextmenu', init));
+    else if (button === 'middle') el.dispatchEvent(new MouseEvent('auxclick', init));
+    // el.click() also runs default actions such as following a link.
+    else if (isHtml(el) && modifiers.length === 0) el.click();
+    else el.dispatchEvent(new MouseEvent('click', { ...init, ...detail }));
+  }
+  if (button === 'left' && count === 2) {
+    el.dispatchEvent(new MouseEvent('dblclick', { ...init, detail: 2 }));
+  }
+}
+
+export function hover(target: Target): void {
+  const el = elementFor(target);
+  if (target.ref !== undefined) reveal(el);
+  const point = isPoint(target) ? target : centerOf(el);
+  const init: MouseEventInit = {
+    bubbles: true,
+    composed: true,
+    view: el.ownerDocument.defaultView,
+    clientX: point.x,
+    clientY: point.y,
+  };
+  el.dispatchEvent(new PointerEvent('pointerover', init));
+  el.dispatchEvent(new MouseEvent('mouseover', init));
+  el.dispatchEvent(new MouseEvent('mouseenter', { ...init, bubbles: false }));
+  el.dispatchEvent(new PointerEvent('pointermove', init));
+  el.dispatchEvent(new MouseEvent('mousemove', init));
+}
+
+function isEditable(el: Element): el is HTMLElement {
+  return isInput(el) || isTextArea(el) || isSelect(el) || (isHtml(el) && el.isContentEditable);
+}
+
+/** The element to type into: the ref, or whatever has focus. */
+function editableFor(ref: string | undefined): HTMLElement {
+  const el = ref === undefined ? deepActiveElement() : resolveRef(ref);
+  if (!el || !isEditable(el)) {
+    throw new AgentError(
+      'INVALID_PARAMS',
+      ref === undefined
+        ? 'Nothing editable has focus; click a field first or pass its ref'
+        : `Element ${ref} is not editable`,
+    );
+  }
+  return el;
 }
 
 function setFieldValue(field: HTMLInputElement | HTMLTextAreaElement, value: string): void {
-  const prototype =
-    field instanceof HTMLInputElement ? HTMLInputElement.prototype : HTMLTextAreaElement.prototype;
-  // React tracks the value through its own setter and ignores a plain assignment.
-  const setter = Object.getOwnPropertyDescriptor(prototype, 'value')?.set;
+  // React tracks the value through the prototype's setter and ignores a plain assignment.
+  const setter = Object.getOwnPropertyDescriptor(Object.getPrototypeOf(field), 'value')?.set;
   if (setter) setter.call(field, value);
   else field.value = value;
 }
@@ -56,103 +132,110 @@ function selectOption(select: HTMLSelectElement, text: string): void {
   select.value = option.value;
 }
 
-function typeIntoEditable(element: HTMLElement, text: string, clear: boolean): void {
-  const selection = getSelection();
-  const range = document.createRange();
-  range.selectNodeContents(element);
-  if (!clear) range.collapse(false);
+function selectContents(el: Element, collapseToEnd: boolean): void {
+  const doc = el.ownerDocument;
+  const range = doc.createRange();
+  range.selectNodeContents(el);
+  if (collapseToEnd) range.collapse(false);
+  const selection = doc.getSelection();
   selection?.removeAllRanges();
   selection?.addRange(range);
+}
 
+function typeIntoEditable(el: HTMLElement, text: string, clear: boolean): void {
+  selectContents(el, !clear);
   // execCommand goes through the editing pipeline rich-text editors listen to.
-  if (!document.execCommand('insertText', false, text)) {
-    element.textContent = clear ? text : `${element.textContent ?? ''}${text}`;
-    element.dispatchEvent(new InputEvent('input', { bubbles: true, inputType: 'insertText' }));
+  if (!el.ownerDocument.execCommand('insertText', false, text)) {
+    el.textContent = clear ? text : `${el.textContent ?? ''}${text}`;
+    el.dispatchEvent(new InputEvent('input', { bubbles: true, inputType: 'insertText' }));
   }
 }
 
-function editableElement(ref: string): HTMLElement {
-  const element = resolveRef(ref);
-  const editable =
-    element instanceof HTMLInputElement ||
-    element instanceof HTMLTextAreaElement ||
-    element instanceof HTMLSelectElement ||
-    (element instanceof HTMLElement && element.isContentEditable);
-  if (!editable) throw new AgentError('INVALID_PARAMS', `Element ${ref} is not editable`);
-  return element as HTMLElement;
-}
+export function type(ref: string | undefined, text: string, clear: boolean, submit: boolean): void {
+  const el = editableFor(ref);
+  reveal(el);
+  el.focus({ preventScroll: true });
 
-export function type(ref: string, text: string, clear: boolean, submit: boolean): void {
-  const element = editableElement(ref);
-  element.scrollIntoView({ block: 'center', inline: 'center', behavior: 'instant' });
-  element.focus({ preventScroll: true });
+  if (isInput(el) || isTextArea(el)) setFieldValue(el, clear ? text : el.value + text);
+  else if (isSelect(el)) selectOption(el, text);
+  else typeIntoEditable(el, text, clear);
 
-  if (element instanceof HTMLInputElement || element instanceof HTMLTextAreaElement) {
-    setFieldValue(element, clear ? text : element.value + text);
-  } else if (element instanceof HTMLSelectElement) {
-    selectOption(element, text);
-  } else {
-    typeIntoEditable(element, text, clear);
-  }
-
-  if (!element.isContentEditable) {
-    element.dispatchEvent(
+  if (!el.isContentEditable) {
+    el.dispatchEvent(
       new InputEvent('input', { bubbles: true, inputType: 'insertText', data: text }),
     );
-    element.dispatchEvent(new Event('change', { bubbles: true }));
+    el.dispatchEvent(new Event('change', { bubbles: true }));
   }
-
-  if (submit) pressEnter(element);
-}
-
-function pressEnter(element: HTMLElement): void {
-  const key = { key: 'Enter', code: 'Enter', keyCode: 13, which: 13 };
-  const notHandled = fire(element, 'keydown', key);
-  fire(element, 'keypress', key);
-  fire(element, 'keyup', key);
-  // A scripted Enter doesn't trigger the browser's implicit form submission.
-  if (notHandled && element instanceof HTMLInputElement) element.form?.requestSubmit();
-}
-
-/** Scrolls the element into view and reports where a real pointer should press. */
-export function locate(ref: string): AgentResults['locate'] {
-  const element = resolveRef(ref);
-  element.scrollIntoView({ block: 'center', inline: 'center', behavior: 'instant' });
-
-  // The first box, not the bounding box: a link wrapped over two lines has a
-  // bounding box whose centre can fall outside the link.
-  const rect = element.getClientRects()[0] ?? element.getBoundingClientRect();
-  const x = rect.left + rect.width / 2;
-  const y = rect.top + rect.height / 2;
-  const top = document.elementFromPoint(x, y);
-  const hittable = top !== null && (element.contains(top) || top.contains(element));
-  return { x, y, hittable };
+  if (submit) press(ENTER, [], 1);
 }
 
 /** Focuses an editable element, with its content selected or the caret at the end. */
 export function focus(ref: string, select: boolean): AgentResults['focus'] {
-  const element = editableElement(ref);
-  element.scrollIntoView({ block: 'center', inline: 'center', behavior: 'instant' });
-  element.focus({ preventScroll: true });
-  if (element instanceof HTMLSelectElement) return { control: 'select' };
+  const el = editableFor(ref);
+  reveal(el);
+  el.focus({ preventScroll: true });
+  if (isSelect(el)) return { control: 'select' };
 
-  if (element instanceof HTMLInputElement || element instanceof HTMLTextAreaElement) {
+  if (isInput(el) || isTextArea(el)) {
     if (select) {
-      element.select();
+      el.select();
     } else {
       try {
-        element.setSelectionRange(element.value.length, element.value.length);
+        el.setSelectionRange(el.value.length, el.value.length);
       } catch {
         // Number, email and similar inputs have no selection API; the caret stays put.
       }
     }
   } else {
-    const range = document.createRange();
-    range.selectNodeContents(element);
-    if (!select) range.collapse(false);
-    const selection = getSelection();
-    selection?.removeAllRanges();
-    selection?.addRange(range);
+    selectContents(el, !select);
   }
   return { control: 'text' };
+}
+
+export function press(key: KeyInfo, modifiers: readonly Modifier[], count: number): void {
+  const el = deepActiveElement() ?? document.body;
+  const init: KeyboardEventInit = {
+    bubbles: true,
+    cancelable: true,
+    composed: true,
+    key: key.key,
+    code: key.code,
+    keyCode: key.keyCode,
+    which: key.keyCode,
+    ...modifierFlags(modifiers),
+  };
+  for (let i = 0; i < count; i++) {
+    const notHandled = el.dispatchEvent(new KeyboardEvent('keydown', init));
+    if (key.text && !isShortcut(modifiers)) el.dispatchEvent(new KeyboardEvent('keypress', init));
+    el.dispatchEvent(new KeyboardEvent('keyup', init));
+    // A scripted Enter doesn't trigger the browser's implicit form submission.
+    if (notHandled && key.key === 'Enter' && isInput(el)) el.form?.requestSubmit();
+  }
+}
+
+function canScroll(el: Element, vertical: boolean): boolean {
+  const style = el.ownerDocument.defaultView?.getComputedStyle(el);
+  const overflow = vertical ? style?.overflowY : style?.overflowX;
+  const room = vertical ? el.scrollHeight > el.clientHeight : el.scrollWidth > el.clientWidth;
+  return room && (overflow === 'auto' || overflow === 'scroll');
+}
+
+export function scroll(
+  ref: string | undefined,
+  direction: Direction,
+  amount: number,
+): AgentResults['scroll'] {
+  const vertical = direction === 'up' || direction === 'down';
+  let area: Element | null = ref === undefined ? null : resolveRef(ref);
+  while (area && !canScroll(area, vertical)) area = composedParent(area);
+  area ??= document.scrollingElement ?? document.documentElement;
+
+  const sign = direction === 'down' || direction === 'right' ? 1 : -1;
+  const before = vertical ? area.scrollTop : area.scrollLeft;
+  area.scrollBy({
+    top: vertical ? sign * amount : 0,
+    left: vertical ? 0 : sign * amount,
+    behavior: 'instant',
+  });
+  return { moved: (vertical ? area.scrollTop : area.scrollLeft) !== before };
 }

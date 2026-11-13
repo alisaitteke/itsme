@@ -1,4 +1,5 @@
 import { browser } from 'wxt/browser';
+import { addToSession, removeFromSession, sessionTabs } from '../../background/session-tabs.ts';
 import { STATUS_REQUEST, type StatusResponse } from '../../shared/runtime-messages.ts';
 import { loadSettings, saveSettings } from '../../shared/settings.ts';
 
@@ -15,6 +16,7 @@ const enabled = byId<HTMLInputElement>('enabled');
 const port = byId<HTMLInputElement>('port');
 const token = byId<HTMLInputElement>('token');
 const realInput = byId<HTMLInputElement>('real-input');
+const share = byId<HTMLButtonElement>('share');
 
 function describe(status: StatusResponse): { state: string; text: string } {
   if (!status) return { state: 'off', text: 'Switched off' };
@@ -48,6 +50,28 @@ async function save(): Promise<void> {
   await refreshStatus();
 }
 
+/** Lets the user hand the tab they are looking at to itsme, or take it back. */
+async function setupSharing(): Promise<void> {
+  const [tab] = await browser.tabs.query({ active: true, currentWindow: true });
+  const tabId = tab?.id;
+  if (tabId === undefined) return;
+
+  const render = async () => {
+    const shared = (await sessionTabs()).some((candidate) => candidate.id === tabId);
+    share.textContent = shared ? 'Stop sharing this tab' : 'Share this tab';
+    share.classList.toggle('secondary', shared);
+    share.dataset.shared = String(shared);
+    share.disabled = false;
+  };
+  share.addEventListener('click', async () => {
+    share.disabled = true;
+    if (share.dataset.shared === 'true') await removeFromSession(tabId);
+    else await addToSession(tabId);
+    await render();
+  });
+  await render();
+}
+
 async function init(): Promise<void> {
   const settings = await loadSettings();
   enabled.checked = settings.enabled;
@@ -64,6 +88,7 @@ async function init(): Promise<void> {
     void save();
   });
 
+  await setupSharing();
   await refreshStatus();
   setInterval(() => void refreshStatus(), STATUS_POLL_MS);
 }

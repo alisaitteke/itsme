@@ -72,9 +72,43 @@ describe('MCP server', () => {
 
   it('returns screenshots as image content', async () => {
     await connectFakeExtension(port, {
-      'page.screenshot': () => ({ mimeType: 'image/png', data: 'aGk=' }),
+      'page.screenshot': () => ({ mimeType: 'image/png', data: 'aGk=', width: 900, height: 700 }),
     });
     const result = await client.callTool({ name: 'page_screenshot', arguments: {} });
-    expect(result.content).toEqual([{ type: 'image', mimeType: 'image/png', data: 'aGk=' }]);
+    expect(result.content).toEqual([
+      { type: 'image', mimeType: 'image/png', data: 'aGk=' },
+      { type: 'text', text: expect.stringContaining('Viewport 900x700') },
+    ]);
+  });
+
+  it('renders a snapshot as an outline under the page header', async () => {
+    await connectFakeExtension(port, {
+      'page.snapshot': () => ({
+        url: 'https://example.com/',
+        title: 'Example',
+        outline: '[e1] heading "Hi" level=1',
+        truncated: true,
+      }),
+    });
+    const result = await client.callTool({ name: 'page_snapshot', arguments: {} });
+    expect(result.content).toEqual([
+      {
+        type: 'text',
+        text: [
+          'URL: https://example.com/',
+          'Title: Example',
+          '',
+          '[e1] heading "Hi" level=1',
+          '',
+          'Truncated. Pass ref to read one part, or raise maxChars.',
+        ].join('\n'),
+      },
+    ]);
+  });
+
+  it('answers OK for a command with no result', async () => {
+    await connectFakeExtension(port, { 'page.click': () => ({}) });
+    const result = await client.callTool({ name: 'page_click', arguments: { ref: 'e1' } });
+    expect(result.content).toEqual([{ type: 'text', text: 'OK' }]);
   });
 });

@@ -1,26 +1,48 @@
-import type { CommandResult, WireError } from '@itsme/protocol';
+import type { CommandResult, Modifier, Target, WireError } from '@itsme/protocol';
+import type { KeyInfo } from '../shared/keys.ts';
 
 // Type-only imports from the protocol package keep zod out of the injected script.
 
 export const AGENT_CHANNEL = 'itsme/agent';
 
+export type Button = 'left' | 'right' | 'middle';
+export type Direction = 'up' | 'down' | 'left' | 'right';
+
 export type AgentCall =
-  | { kind: 'snapshot'; maxTextLength: number }
-  | { kind: 'click'; ref: string }
-  | { kind: 'type'; ref: string; text: string; clear: boolean; submit: boolean }
-  | { kind: 'locate'; ref: string }
-  | { kind: 'focus'; ref: string; select: boolean };
+  | {
+      kind: 'snapshot';
+      filter: 'all' | 'interactive';
+      ref?: string;
+      maxDepth: number;
+      maxChars: number;
+    }
+  | { kind: 'find'; query: string }
+  | { kind: 'text'; maxChars: number }
+  | { kind: 'viewport' }
+  | { kind: 'locate'; target: Target; scroll: boolean }
+  | { kind: 'click'; target: Target; button: Button; count: number; modifiers: Modifier[] }
+  | { kind: 'hover'; target: Target }
+  | { kind: 'focus'; ref: string; select: boolean }
+  | { kind: 'type'; ref?: string; text: string; clear: boolean; submit: boolean }
+  | { kind: 'press'; key: KeyInfo; modifiers: Modifier[]; count: number }
+  | { kind: 'scroll'; ref?: string; direction: Direction; amount: number };
 
 export type AgentRequest = AgentCall & { channel: typeof AGENT_CHANNEL };
 
 export interface AgentResults {
   snapshot: CommandResult<'page.snapshot'>;
-  click: CommandResult<'page.click'>;
-  type: CommandResult<'page.type'>;
-  /** Viewport point to press, and whether a real pointer there would hit the element. */
-  locate: { x: number; y: number; hittable: boolean };
+  find: CommandResult<'page.find'>;
+  text: CommandResult<'page.text'>;
+  viewport: { width: number; height: number };
+  /** Viewport point to press, and whether a real pointer there would hit the target. */
+  locate: { x: number; y: number; hittable: boolean; inViewport: boolean };
+  click: Record<string, never>;
+  hover: Record<string, never>;
   /** What kind of control now has focus; a select can't take typed text. */
   focus: { control: 'text' | 'select' };
+  type: Record<string, never>;
+  press: Record<string, never>;
+  scroll: CommandResult<'page.scroll'>;
 }
 
 export type AgentResponse = { ok: true; result: unknown } | { ok: false; error: WireError };

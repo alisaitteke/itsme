@@ -4,8 +4,11 @@ import { registerTools } from './tools.ts';
 
 const instructions = [
   "These tools drive the user's own browser through the itsme extension.",
-  'Call page_snapshot before page_click or page_type to get element refs.',
-  'If a tool reports NOT_CONNECTED, ask the user to open the browser and enable the extension.',
+  'They only reach tabs in the browser\'s "itsme" tab group: tabs_open and page_navigate put',
+  'new tabs there, and the user can share an existing tab from the extension popup.',
+  'Call page_snapshot or page_find to get element refs before acting on the page.',
+  'On NOT_CONNECTED, ask the user to open the browser and enable the extension.',
+  'On TAB_NOT_SHARED, ask the user to share that tab.',
 ].join(' ');
 
 export function createMcpServer(bridge: Bridge, version: string): McpServer {

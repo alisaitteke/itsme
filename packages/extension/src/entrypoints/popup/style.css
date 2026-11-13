@@ -65,6 +65,25 @@ h1 {
   background: #dc2626;
 }
 
+.share {
+  display: grid;
+  gap: 4px;
+  margin-bottom: 14px;
+  padding-bottom: 14px;
+  border-bottom: 1px solid var(--border);
+}
+
+button:disabled {
+  opacity: 0.5;
+  cursor: default;
+}
+
+button.secondary {
+  color: var(--text);
+  background: transparent;
+  border: 1px solid var(--border);
+}
+
 form {
   display: grid;
   gap: 10px;

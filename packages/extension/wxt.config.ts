@@ -10,8 +10,8 @@ export default defineConfig({
       'scripting',
       'storage',
       'alarms',
-      // Real mouse and keyboard input; only Chromium has the API.
-      ...(browser === 'firefox' || browser === 'safari' ? [] : ['debugger']),
+      // Real input and the tab group itsme works in; only Chromium has these APIs.
+      ...(browser === 'firefox' || browser === 'safari' ? [] : ['debugger', 'tabGroups']),
     ],
     host_permissions: ['<all_urls>'],
     ...(browser === 'firefox'

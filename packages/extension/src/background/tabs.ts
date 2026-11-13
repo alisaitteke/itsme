@@ -27,14 +27,6 @@ export async function getTab(tabId: number): Promise<BrowserTab> {
   }
 }
 
-/** The given tab, or the active tab of the window the user last used. */
-export async function resolveTab(tabId: number | undefined): Promise<BrowserTab> {
-  if (tabId !== undefined) return getTab(tabId);
-  const [tab] = await browser.tabs.query({ active: true, lastFocusedWindow: true });
-  if (tab?.id === undefined) throw new BridgeError('TAB_NOT_FOUND', 'There is no active tab');
-  return tab as BrowserTab;
-}
-
 /**
  * Resolves when the tab finishes loading, or after a timeout: a page that is slow to
  * settle is still usable. Call it before starting the navigation so no event is missed.
