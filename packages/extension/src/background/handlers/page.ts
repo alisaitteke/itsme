@@ -1,7 +1,7 @@
 import { BridgeError, type Target } from '@itsme/protocol';
 import { browser } from 'wxt/browser';
 import { keyInfo } from '../../shared/keys.ts';
-import { pageUrlOf, pdfShownAt, readerUrlFor } from '../../shared/reader.ts';
+import { pdfShownAt, readerUrlFor } from '../../shared/reader.ts';
 import { callAgent } from '../agent-client.ts';
 import { activeDebugger } from '../debugger/index.ts';
 import { pngAtViewportSize } from '../image.ts';
@@ -76,11 +76,10 @@ async function intoReader(tab: BrowserTab): Promise<BrowserTab> {
 /** The session tab, once the user has allowed the site it is showing. */
 async function pageTab(tabId: number | undefined): Promise<BrowserTab> {
   const tab = await sessionTab(tabId);
-  // Checked before the reader fetches anything from a site the user has ruled out.
-  await refuseBlocked(pageUrlOf(tab.url ?? ''));
-  const page = await intoReader(tab);
-  await ensureSiteAllowed(page);
-  return page;
+  // A PDF's site is asked about where the user has it open, in the browser's own
+  // viewer. Only a yes moves the tab into the reader.
+  await ensureSiteAllowed(tab);
+  return intoReader(tab);
 }
 
 async function monitorFor(what: string) {

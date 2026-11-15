@@ -2,7 +2,9 @@ import { BRIDGE_HOST, type BrowserInfo, EXTENSION_PATH } from '@itsme/protocol';
 import { browser } from 'wxt/browser';
 import { type AutomationActionResult, isAutomationAction } from '../shared/automations.ts';
 import { saveLaunch } from '../shared/launch.ts';
+import { pageUrlOf } from '../shared/reader.ts';
 import {
+  isFontRequest,
   isSiteDecision,
   isStatusRequest,
   isStopRequest,
@@ -11,6 +13,7 @@ import {
 import { loadSettings, onSettingsChanged, saveSettings } from '../shared/settings.ts';
 import { hostOf } from '../shared/sites.ts';
 import { performAction, startAutomations, stopAutomationOfTab } from './automations/scheduler.ts';
+import { BRAND_FONT_FILES } from './brand-font.ts';
 import { BridgeConnection } from './connection.ts';
 import { detachDebugger, setupDebugger } from './debugger/index.ts';
 import { handlers } from './handlers/index.ts';
@@ -87,9 +90,14 @@ export function startBackground(): void {
 
   browser.runtime.onMessage.addListener((message, sender, sendResponse) => {
     if (isSiteDecision(message)) {
-      // The site is whatever page the answer came from, never something the message claims.
-      const host = sender.frameId === 0 ? hostOf(sender.tab?.url ?? '') : null;
+      // The site is whatever page the answer came from, never something the message
+      // claims. For a PDF in the reader, that is the site the PDF came from.
+      const host = sender.frameId === 0 ? hostOf(pageUrlOf(sender.tab?.url ?? '')) : null;
       if (host) void recordDecision(host, message.allow);
+      return;
+    }
+    if (isFontRequest(message)) {
+      sendResponse(BRAND_FONT_FILES);
       return;
     }
     if (isStopRequest(message)) {

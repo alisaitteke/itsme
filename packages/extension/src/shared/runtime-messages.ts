@@ -14,6 +14,15 @@ export interface SiteDecision {
   allow: boolean;
 }
 
+/** Sent by an in-page overlay that wants to be set in the brand's typeface. */
+export const FONT_REQUEST = { type: 'itsme/brand-font' } as const;
+
+/** One file of the typeface: its bytes in base64, and the characters it holds. */
+export interface FontFile {
+  data: string;
+  unicodeRange: string;
+}
+
 function hasType(message: unknown, type: string): boolean {
   return (
     typeof message === 'object' && message !== null && (message as { type?: unknown }).type === type
@@ -23,6 +32,8 @@ function hasType(message: unknown, type: string): boolean {
 export const isStatusRequest = (message: unknown): boolean => hasType(message, STATUS_REQUEST.type);
 
 export const isStopRequest = (message: unknown): boolean => hasType(message, STOP_REQUEST.type);
+
+export const isFontRequest = (message: unknown): boolean => hasType(message, FONT_REQUEST.type);
 
 export const isSiteDecision = (message: unknown): message is SiteDecision =>
   hasType(message, 'itsme/site-decision') &&

@@ -950,8 +950,26 @@ try {
   {
     const before = (await json('tabs_list')).tabs.find((entry) => entry.id === tab.id).url;
     const pdfUrl = `${base}/report.pdf`;
+    const shownIn = () => inExtension(`chrome.tabs.get(${tab.id}).then((found) => found.url)`);
+    const allowed = () =>
+      inExtension(
+        `chrome.storage.local.get('settings').then(({ settings }) => settings.allowedSites)`,
+      );
+    const access = await inExtension(
+      `chrome.storage.local.get('settings').then(({ settings }) => ({ siteAccess: settings.siteAccess, allowedSites: settings.allowedSites }))`,
+    );
+    await updateSettings({ siteAccess: 'ask', allowedSites: [] });
     await on('page_navigate', { url: pdfUrl });
-    const read = await on('page_text');
+    const firstRead = on('page_text');
+    await sleep(1_500);
+    check(
+      "a PDF on a new site asks in the browser's own viewer, before anything moves",
+      (await shownIn()) === pdfUrl && (await hasOverlayButton('itsme-allow')),
+      await shownIn(),
+    );
+    await pressOverlayButton('itsme-allow');
+    const read = await firstRead;
+    check('"Allow" there allows the site of the PDF', (await allowed()).includes('127.0.0.1'));
     check(
       'a PDF is read, page by page, under its own address',
       read.text.startsWith(`URL: ${pdfUrl}`) &&
@@ -960,8 +978,9 @@ try {
         ),
       read.text,
     );
-    const shown = await inExtension(`chrome.tabs.get(${tab.id}).then((found) => found.url)`);
+    const shown = await shownIn();
     check('it is shown in the reader', shown.includes('/reader.html?src='), shown);
+
     const listedPdf = (await json('tabs_list')).tabs.find((entry) => entry.id === tab.id);
     check('tabs_list gives the PDF, not the reader', listedPdf.url === pdfUrl, listedPdf.url);
 
@@ -981,7 +1000,24 @@ try {
       zoomOf(zoomed) > zoomOf(opened),
       `${zoomOf(opened)}% then ${zoomOf(zoomed)}%`,
     );
+
+    await updateSettings({ siteAccess: 'ask', allowedSites: [] });
+    const asked = on('page_text');
+    await sleep(1_000);
+    check(
+      'a PDF from an unknown site gets a prompt in the reader',
+      await pressOverlayButton('itsme-allow', 'chrome-extension://'),
+    );
+    const allowedRead = await asked;
+    check(
+      '"Allow" in the reader lets the call through',
+      allowedRead.text.includes('Costs fell.'),
+      allowedRead.text,
+    );
+    check('and allows the site of the PDF', (await allowed()).includes('127.0.0.1'));
+    await updateSettings({ siteAccess: 'all' });
     await on('page_navigate', { url: before });
+    await updateSettings(access);
   }
 
   // --- badge and stop ---

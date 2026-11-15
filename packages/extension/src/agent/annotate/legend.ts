@@ -1,4 +1,9 @@
 import { BRAND, markSvg } from '../../shared/brand.ts';
+import { BRAND_FONT, loadBrandFont } from '../brand-font.ts';
+
+// The stroke under the title: the signature the brand puts under every heading of its own.
+const FLOURISH =
+  "url(\"data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 132 12' preserveAspectRatio='none'%3E%3Cpath d='M2 8c15-8 24 5 40 0s24-8 40-2 26 4 48-2' fill='none' stroke='%23000' stroke-width='2.6' stroke-linecap='round'/%3E%3C/svg%3E\") no-repeat center / 100% 100%";
 
 export interface LegendEntry {
   number: number;
@@ -22,16 +27,26 @@ export const LEGEND_CSS = `
 .panel {
   position: fixed; top: 14px; left: 14px; display: flex; flex-direction: column;
   box-sizing: border-box; width: 292px; max-width: calc(100vw - 28px); max-height: min(74vh, 640px);
-  font: 15px/1.4 system-ui, sans-serif; color: #14281f; background: #ffffff;
+  font: 15px/1.4 "${BRAND_FONT}", system-ui, sans-serif; color: #14281f; background: #ffffff;
   border: 1px solid #b0c6bc; border-radius: 14px; box-shadow: 0 12px 34px rgb(12 42 33 / 0.24);
   pointer-events: auto;
   --soft: #e7f2ed; --muted: #50645c; --line: #d3e2db; --accent: ${BRAND.greenSolid}; --strong: ${BRAND.ink};
+  --flourish: ${BRAND.green};
 }
-.panel header { display: flex; align-items: center; gap: 9px; padding: 12px 10px 10px 14px; }
+.panel header { display: flex; align-items: center; gap: 8px; padding: 10px 10px 0 14px; }
+.wordmark {
+  flex: 1; font-size: 18px; font-weight: 800; letter-spacing: -0.035em; color: var(--strong);
+}
 .panel h2 {
-  flex: 1; min-width: 0; margin: 0; font-size: 16px; font-weight: 750; letter-spacing: -0.01em;
-  color: var(--strong); overflow-wrap: anywhere;
+  margin: 0; padding: 8px 16px 12px; font-size: 19px; line-height: 1.2; font-weight: 760;
+  letter-spacing: -0.02em; color: var(--strong); overflow-wrap: anywhere;
 }
+.panel h2::after {
+  content: ""; display: block; width: 76px; height: 8px; margin-top: 6px;
+  background: var(--flourish); -webkit-mask: ${FLOURISH}; mask: ${FLOURISH};
+}
+.closed h2 { padding-bottom: 12px; font-size: 16px; }
+.closed h2::after { display: none; }
 .panel .mark { display: block; flex: none; }
 .panel button { font: inherit; color: inherit; background: none; border: 0; cursor: pointer; }
 .panel button:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
@@ -59,6 +74,7 @@ export const LEGEND_CSS = `
 .panel.dark {
   color: #e4e6e5; background: #1c1d1d; border-color: #4c504e;
   --soft: #2a2c2c; --muted: #a3a8a6; --line: #2f3231; --accent: #63dab0; --strong: #f5f6f6;
+  --flourish: #2cbf8c;
 }
 @media (prefers-reduced-motion: reduce) { .fold svg { transition: none; } }
 `;
@@ -111,8 +127,11 @@ export function renderLegend(
   entries: readonly LegendEntry[],
   actions: LegendActions,
 ): void {
+  loadBrandFont();
   const header = el('header');
-  header.innerHTML = markSvg(22);
+  header.innerHTML = markSvg(24);
+  const wordmark = el('span', 'wordmark', 'itsme');
+  wordmark.translate = false;
   const fold = el('button', 'fold');
   fold.type = 'button';
   fold.id = 'itsme-notes-fold';
@@ -128,7 +147,7 @@ export function renderLegend(
     actions.folded();
   });
   showFolded();
-  header.append(el('h2', undefined, title), fold);
+  header.append(wordmark, fold);
 
   const list = el('ol');
   list.append(...entries.map((entry) => row(entry, actions, list)));
@@ -140,5 +159,5 @@ export function renderLegend(
   const footer = el('footer');
   footer.append(clear);
 
-  panel.replaceChildren(header, list, footer);
+  panel.replaceChildren(header, el('h2', undefined, title), list, footer);
 }
