@@ -1,4 +1,5 @@
 #!/usr/bin/env node
+import { fileURLToPath } from 'node:url';
 import { StdioServerTransport } from '@modelcontextprotocol/server/stdio';
 import pkg from '../package.json' with { type: 'json' };
 import { Bridge } from './bridge/bridge.ts';
@@ -31,6 +32,7 @@ async function main(): Promise<void> {
     token: config.token,
     requestTimeoutMs: config.requestTimeoutMs,
     serverVersion: pkg.version,
+    launch: { command: process.execPath, args: [fileURLToPath(import.meta.url)] },
     logger,
   });
   await bridge.start();

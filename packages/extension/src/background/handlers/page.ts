@@ -6,9 +6,9 @@ import { activeDebugger } from '../debugger/index.ts';
 import { pngAtViewportSize } from '../image.ts';
 import { currentInput } from '../input/index.ts';
 import type { Handlers } from '../router.ts';
-import { sessionTab } from '../session-tabs.ts';
+import { describeTab, sessionTab } from '../session-tabs.ts';
 import { ensureSiteAllowed, refuseBlocked } from '../site-access.ts';
-import { type BrowserTab, getTab, showTab, toTab, watchLoad } from '../tabs.ts';
+import { type BrowserTab, showTab, watchLoad } from '../tabs.ts';
 import { openSessionTab } from './tabs.ts';
 
 const WAIT_POLL_MS = 200;
@@ -76,7 +76,7 @@ export const pageHandlers: Handlers = {
     const loaded = watchLoad(tab.id, false);
     await browser.tabs.update(tab.id, { url });
     await loaded;
-    return { tab: toTab(await getTab(tab.id)) };
+    return { tab: await describeTab(tab.id) };
   },
 
   'page.history': async ({ tabId, direction }) => {
@@ -84,7 +84,7 @@ export const pageHandlers: Handlers = {
     const loaded = watchLoad(tab.id, false);
     await traverse(tab.id, direction);
     await loaded;
-    return { tab: toTab(await getTab(tab.id)) };
+    return { tab: await describeTab(tab.id) };
   },
 
   'page.snapshot': async ({ tabId, filter, ref, maxDepth, maxChars }) => {

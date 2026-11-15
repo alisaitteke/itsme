@@ -17,5 +17,21 @@
     "formatter": {
       "quoteStyle": "single"
     }
-  }
+  },
+  "overrides": [
+    {
+      "includes": [
+        "packages/server/scripts/make-mcpb.mjs",
+        "packages/server/src/config.ts",
+        "packages/server/test/config.test.ts"
+      ],
+      "linter": {
+        "rules": {
+          "suspicious": {
+            "noTemplateCurlyInString": "off"
+          }
+        }
+      }
+    }
+  ]
 }

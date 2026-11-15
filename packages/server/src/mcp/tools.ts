@@ -1,9 +1,12 @@
 import {
+  type Automation,
   BridgeError,
   type CommandInput,
   type CommandName,
   type CommandResult,
   commands,
+  describeSchedule,
+  describeStep,
   toWireError,
 } from '@itsme/protocol';
 import type { McpServer } from '@modelcontextprotocol/server';
@@ -92,6 +95,29 @@ function formatRequest(request: CommandResult<'page.network'>['requests'][number
   return `${outcome} ${request.method} ${request.url} (${details.join(', ')})`;
 }
 
+const STATUS_WORDS: Record<Automation['status'], string> = {
+  pending: 'waiting for the user to approve it',
+  on: 'on',
+  paused: 'paused',
+};
+
+function describeAutomation(automation: Automation): string {
+  const last = automation.history.at(-1);
+  const because = automation.pausedBecause ? ` (${automation.pausedBecause})` : '';
+  return [
+    `[${automation.id}] ${JSON.stringify(automation.name)}: ${STATUS_WORDS[automation.status]}${because}`,
+    `  ${describeSchedule(automation.schedule)}, on ${automation.url}`,
+    ...automation.steps.map((step, index) => `  ${index + 1}. ${describeStep(step)}`),
+    last
+      ? `  ${automation.runs} run(s); the latest ${last.ok ? 'worked' : `failed: ${last.note ?? 'no reason given'}`} at ${new Date(last.at).toISOString()}`
+      : '  Has not run yet',
+  ].join('\n');
+}
+
+const APPROVAL_NOTE =
+  'It will not run until the user approves it. Ask them to press the itsme toolbar button, ' +
+  'open Automations and press Approve. You cannot approve it yourself.';
+
 const browserStatus: Tool = {
   name: 'browser_status',
   title: 'Browser status',
@@ -133,13 +159,24 @@ function pageTools(options: ToolOptions): Tool[] {
     tool({
       command: 'tabs.list',
       title: 'List tabs',
-      description: 'List the tabs in the itsme tab group. Other tabs are out of reach.',
+      description:
+        'List the tabs in itsme tab groups, with the group each is in. Other tabs are out of reach.',
       readOnly: true,
     }),
     tool({
       command: 'tabs.open',
       title: 'Open tab',
-      description: 'Open a URL in a new tab of the itsme tab group and wait for it to load.',
+      description:
+        'Open a URL in a new tab and wait for it to load. The tab goes into the "itsme" tab ' +
+        'group, or into the group named by `group`, which is created if needed. Give tabs of ' +
+        'one task the same group, with a color that suits the topic.',
+    }),
+    tool({
+      command: 'tabs.group',
+      title: 'Group tabs',
+      description:
+        'Move itsme tabs into a named tab group, creating it if needed, or give an existing ' +
+        'group another color. Only tabs itsme already has can be moved.',
     }),
     tool({ command: 'tabs.close', title: 'Close tab', description: 'Close a tab.' }),
     tool({
@@ -280,6 +317,42 @@ function pageTools(options: ToolOptions): Tool[] {
             ...(requests.length === 0 ? ['No requests recorded'] : requests.map(formatRequest)),
           ].join('\n'),
         ),
+    }),
+    tool({
+      command: 'automation.create',
+      title: 'Create automation',
+      description:
+        'Save steps for the browser to repeat by itself on a schedule, with no AI app running: ' +
+        'every day at a time, or every few seconds. Work through the steps with the page tools ' +
+        'first, then save what worked. A step names its element by the role and name ' +
+        'page_snapshot prints, e.g. `[e5] button "Check in"` is {role: "button", name: "Check in"}; ' +
+        'refs do not last. The user has to approve it in the extension before it runs. ' +
+        'Automations run only on the sites of their own URLs and never type into password fields.',
+      format: ({ automation }) => text(`${describeAutomation(automation)}\n\n${APPROVAL_NOTE}`),
+    }),
+    tool({
+      command: 'automation.list',
+      title: 'List automations',
+      description: 'List the saved automations with their schedule, status and latest run.',
+      readOnly: true,
+      format: ({ automations }) =>
+        text(
+          automations.length === 0
+            ? 'No automations'
+            : automations.map(describeAutomation).join('\n\n'),
+        ),
+    }),
+    tool({
+      command: 'automation.pause',
+      title: 'Pause automation',
+      description:
+        'Stop an automation from running. Only the user can turn it back on, in the extension.',
+      format: ({ automation }) => text(describeAutomation(automation)),
+    }),
+    tool({
+      command: 'automation.remove',
+      title: 'Remove automation',
+      description: 'Delete an automation and close its tab.',
     }),
     tool({
       command: 'page.screenshot',

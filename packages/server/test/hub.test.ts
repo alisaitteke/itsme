@@ -44,6 +44,14 @@ describe('Hub', () => {
     await expect(hub.request('page.print', {})).rejects.toMatchObject({ code: 'UNSUPPORTED' });
   });
 
+  it('tells the extension how the server was started', async () => {
+    await hub.close();
+    const launch = { command: '/usr/bin/node', args: ['/opt/itsme/cli.mjs'] };
+    await startHub({ launch });
+    const extension = await connectFakeExtension(hub.port);
+    expect(extension.welcome).toMatchObject({ type: 'welcome', launch });
+  });
+
   it('rejects connections from web page origins', async () => {
     const page = await connectFakeExtension(hub.port, {}, { origin: 'https://evil.example' });
     await page.closed;

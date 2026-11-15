@@ -85,7 +85,13 @@ const pages = {
   '/frame': `<button onclick="this.textContent = 'Frame clicked'">Frame button</button>`,
 };
 
+/** Every press of the Ping button on the /auto page, as the site saw it. */
+const hits = [];
+
 const site = createServer((req, res) => {
+  if (req.url.startsWith('/api/hit')) {
+    hits.push({ who: new URL(req.url, 'http://x').searchParams.get('who'), at: Date.now() });
+  }
   if (req.url.startsWith('/api/')) {
     res.writeHead(200, { 'Content-Type': 'application/json' });
     res.end('{"ok":true}');
@@ -96,6 +102,14 @@ const site = createServer((req, res) => {
 });
 await new Promise((done) => site.listen(0, '127.0.0.1', done));
 const base = `http://127.0.0.1:${site.address().port}`;
+// "Away" leads to another host name, which no automation here is approved for.
+pages['/auto'] = `<!doctype html><title>Auto</title>
+<label>Who <input id="who"></label>
+<input type="password" aria-label="Secret">
+<button onclick="fetch('/api/hit?who=' + encodeURIComponent(who.value))
+  .then(() => { out.textContent = 'pinged ' + who.value })">Ping</button>
+<a href="http://localhost:${site.address().port}/second">Away</a>
+<p id="out"></p>`;
 
 async function freePort() {
   const probe = createServer();
@@ -168,9 +182,9 @@ async function evaluate(target, expression) {
  * isn't showing). They sit in closed shadow roots, which only the DevTools protocol
  * can see into.
  */
-async function withOverlayButton(buttonId, use) {
+async function withOverlayButton(buttonId, use, where = base) {
   const page = (await listTargets()).find(
-    (target) => target.type === 'page' && target.url.startsWith(base),
+    (target) => target.type === 'page' && target.url.startsWith(where),
   );
   const session = await connect(page);
   try {
@@ -189,19 +203,40 @@ async function withOverlayButton(buttonId, use) {
   }
 }
 
-const hasOverlayButton = (buttonId) => withOverlayButton(buttonId, (button) => button !== null);
+/** With ITSME_E2E_SHOTS set to a folder, saves a picture of the page as the user sees it. */
+async function snap(name) {
+  const dir = process.env.ITSME_E2E_SHOTS;
+  if (!dir) return;
+  const page = (await listTargets()).find(
+    (target) => target.type === 'page' && target.url.startsWith(base),
+  );
+  const session = await connect(page);
+  try {
+    const { data } = await session.send('Page.captureScreenshot', { format: 'jpeg', quality: 72 });
+    writeFileSync(join(dir, `${name}.jpg`), Buffer.from(data, 'base64'));
+  } finally {
+    session.close();
+  }
+}
+
+const hasOverlayButton = (buttonId, where) =>
+  withOverlayButton(buttonId, (button) => button !== null, where);
 
 /** Presses an overlay button with a real click, as a person would. */
-const pressOverlayButton = (buttonId) =>
-  withOverlayButton(buttonId, async (button, session) => {
-    if (!button) return false;
-    const { model } = await session.send('DOM.getBoxModel', { nodeId: button.nodeId });
-    const [left, top, , , right, bottom] = model.content;
-    const press = { x: (left + right) / 2, y: (top + bottom) / 2, button: 'left', clickCount: 1 };
-    await session.send('Input.dispatchMouseEvent', { type: 'mousePressed', ...press });
-    await session.send('Input.dispatchMouseEvent', { type: 'mouseReleased', ...press });
-    return true;
-  });
+const pressOverlayButton = (buttonId, where) =>
+  withOverlayButton(
+    buttonId,
+    async (button, session) => {
+      if (!button) return false;
+      const { model } = await session.send('DOM.getBoxModel', { nodeId: button.nodeId });
+      const [left, top, , , right, bottom] = model.content;
+      const press = { x: (left + right) / 2, y: (top + bottom) / 2, button: 'left', clickCount: 1 };
+      await session.send('Input.dispatchMouseEvent', { type: 'mousePressed', ...press });
+      await session.send('Input.dispatchMouseEvent', { type: 'mouseReleased', ...press });
+      return true;
+    },
+    where,
+  );
 
 // Chromium ships extensions of its own, so pick the worker by the manifest name.
 async function findServiceWorker() {
@@ -224,7 +259,26 @@ async function findServiceWorker() {
 /** Runs an expression inside the extension, where the chrome.* APIs are. */
 const inExtension = async (expression) => evaluate(await findServiceWorker(), expression);
 
-// The popup is the only UI for settings, so change them from inside the service worker.
+/** Opens one of the extension's own pages in a background tab, evaluates there, closes it. */
+async function inExtensionPage(path, expression) {
+  const url = await inExtension(`chrome.runtime.getURL('${path}')`);
+  const tabId = await inExtension(
+    `chrome.tabs.create({ url: '${url}', active: false }).then((tab) => tab.id)`,
+  );
+  try {
+    let target;
+    for (let i = 0; i < 50 && !target; i++) {
+      target = (await listTargets()).find((candidate) => candidate.url === url);
+      if (!target) await sleep(100);
+    }
+    await sleep(500);
+    return await evaluate(target, expression);
+  } finally {
+    await inExtension(`chrome.tabs.remove(${tabId}).then(() => true)`);
+  }
+}
+
+// Tests change settings from inside the service worker, the way the options page does.
 const updateSettings = (patch) =>
   inExtension(`chrome.storage.local.get('settings').then(({ settings }) =>
     chrome.storage.local.set({ settings: { ...settings, ...${JSON.stringify(patch)} } }))`);
@@ -303,6 +357,113 @@ try {
   check('extension connects', browser !== null);
   if (!browser) throw new Error('The extension never connected');
 
+  // --- popup and options page ---
+  const stored = await inExtension(`chrome.storage.local.get('launch').then((all) => all.launch)`);
+  check(
+    'the extension learns how the server was started',
+    stored?.command === process.execPath && stored?.args?.[0] === serverEntry,
+    JSON.stringify(stored),
+  );
+  const setupUrl = await inExtension(`chrome.runtime.getURL('setup.html')`);
+  const welcome = await inExtension(
+    `chrome.tabs.query({}).then((all) => all.filter((t) => t.url === '${setupUrl}').map((t) => t.id))`,
+  );
+  check(
+    'installing the extension opens the setup page',
+    welcome.length === 1,
+    JSON.stringify(welcome),
+  );
+  await inExtension(`chrome.tabs.remove(${JSON.stringify(welcome)}).then(() => true)`);
+
+  const popup = await inExtensionPage(
+    'popup.html',
+    `(() => {
+      const text = (id) => document.getElementById(id).textContent.trim();
+      return {
+        status: text('status'), share: text('share'), add: text('add'), power: text('power'),
+        settingsInPopup: document.getElementById('port') !== null,
+      };
+    })()`,
+  );
+  check(
+    'the popup shows the connection and its actions',
+    popup.status.startsWith('Connected') &&
+      popup.share === 'Share this tab' &&
+      popup.add === 'Add to an AI app' &&
+      popup.power === 'Turn off',
+    JSON.stringify(popup),
+  );
+  check('the popup holds no settings', popup.settingsInPopup === false);
+
+  const setup = await inExtensionPage(
+    'setup.html',
+    `(() => {
+      const actions = {};
+      for (const button of document.querySelectorAll('#clients button')) {
+        actions[button.dataset.client] = { kind: button.dataset.kind, payload: button.dataset.payload };
+      }
+      return {
+        actions,
+        status: document.getElementById('status').textContent,
+        byHand: document.getElementById('snippet').textContent,
+      };
+    })()`,
+  );
+  // This browser talks to a build in this checkout, so the entries point at that build.
+  const localCommand = `-e ITSME_PORT=${bridgePort} -- ${process.execPath} ${serverEntry}`;
+  check(
+    'the setup page has one action per app',
+    Object.keys(setup.actions).join() === 'claude-desktop,cursor,vscode,claude-code,codex,other',
+    JSON.stringify(Object.keys(setup.actions)),
+  );
+  check(
+    'Claude Desktop gets the bundle download',
+    setup.actions['claude-desktop'].payload.endsWith('/releases/latest/download/itsme.mcpb'),
+    setup.actions['claude-desktop'].payload,
+  );
+  check(
+    'Cursor and VS Code get install links',
+    setup.actions.cursor.payload.startsWith(
+      'cursor://anysphere.cursor-deeplink/mcp/install?name=itsme&config=',
+    ) && decodeURIComponent(setup.actions.vscode.payload).includes(serverEntry),
+    setup.actions.cursor.payload + setup.actions.vscode.payload,
+  );
+  check(
+    'Claude Code gets a command for this server, on this port',
+    setup.actions['claude-code'].kind === 'copy' &&
+      setup.actions['claude-code'].payload === `claude mcp add --scope user itsme ${localCommand}`,
+    setup.actions['claude-code'].payload,
+  );
+  check(
+    'the setup page shows the connection and the entry to add by hand',
+    setup.status.startsWith('Connected') &&
+      JSON.parse(setup.byHand).mcpServers.itsme.args[0] === serverEntry,
+    setup.status + setup.byHand,
+  );
+  const options = await inExtensionPage(
+    'options.html',
+    `(async () => {
+      const value = (id) => document.getElementById(id).value;
+      const before = { port: value('port'), indicator: value('indicator'), enabled: document.getElementById('enabled').checked };
+      const select = document.getElementById('indicator');
+      select.value = 'orbit';
+      select.dispatchEvent(new Event('change'));
+      await new Promise((done) => setTimeout(done, 400));
+      const { settings } = await chrome.storage.local.get('settings');
+      return { ...before, saved: settings.indicator, note: document.getElementById('saved').textContent };
+    })()`,
+  );
+  check(
+    'the options page shows the settings and saves a change',
+    options.port === String(bridgePort) &&
+      options.indicator === 'aurora' &&
+      options.enabled &&
+      options.saved === 'orbit' &&
+      options.note === 'Saved',
+    JSON.stringify(options),
+  );
+  await updateSettings({ indicator: 'aurora' });
+
   // --- tabs and the itsme group ---
   const { tab } = await json('tabs_open', { url: `${base}/` });
   check('tabs_open waits for the load', tab.title === 'E2E page');
@@ -316,6 +477,74 @@ try {
   );
   const unshared = await call('page_snapshot', { tabId: blankId });
   check('a tab outside the group is refused', unshared.text.startsWith('TAB_NOT_SHARED'));
+
+  // --- named groups ---
+  const second = `${base}/second`;
+  const first = await json('tabs_open', {
+    url: second,
+    group: 'Research',
+    color: 'green',
+    active: false,
+  });
+  check(
+    'tabs_open puts the tab in a named group with the given color',
+    first.tab.group?.name === 'Research' && first.tab.group?.color === 'green',
+    JSON.stringify(first.tab),
+  );
+  const joined = await json('tabs_open', { url: second, group: 'Research', active: false });
+  let named = await inExtension(`chrome.tabGroups.query({ title: 'Research' })`);
+  check(
+    'a second tab joins the group and leaves its color alone',
+    named.length === 1 && joined.tab.group?.color === 'green',
+    JSON.stringify(named),
+  );
+  const [twinA, twinB] = await Promise.all([
+    json('tabs_open', { url: second, group: 'Twins', active: false }),
+    json('tabs_open', { url: second, group: 'Twins', active: false }),
+  ]);
+  named = await inExtension(`chrome.tabGroups.query({ title: 'Twins' })`);
+  const picked = twinA.tab.group?.color;
+  check('two tabs opened at once share one new group', named.length === 1, JSON.stringify(named));
+  check(
+    'a new group without a color gets one no other group has',
+    typeof picked === 'string' &&
+      !['blue', 'green'].includes(picked) &&
+      twinB.tab.group?.color === picked,
+    String(picked),
+  );
+  const moved = await json('tabs_group', { tabIds: [joined.tab.id], group: 'Twins', color: 'red' });
+  const listed = (await json('tabs_list')).tabs;
+  check(
+    'tabs_group moves a tab and recolors the group',
+    moved.tabs[0].group?.name === 'Twins' &&
+      listed.filter((entry) => entry.group?.name === 'Twins' && entry.group.color === 'red')
+        .length === 3,
+    JSON.stringify(listed.map((entry) => entry.group)),
+  );
+  check(
+    'tabs_list reports the group of every tab',
+    listed.length === 5 && listed.find((entry) => entry.id === tab.id)?.group?.name === 'itsme',
+    JSON.stringify(listed.map((entry) => entry.group)),
+  );
+  const grabbed = await call('tabs_group', { tabIds: [tab.id, blankId], group: 'Twins' });
+  check(
+    'tabs_group refuses a tab that is not shared, and moves none',
+    grabbed.text.startsWith('TAB_NOT_SHARED') &&
+      (await json('tabs_list')).tabs.find((entry) => entry.id === tab.id)?.group?.name === 'itsme',
+    grabbed.text,
+  );
+  await inExtension(`chrome.tabs.group({ tabIds: [${blankId}] })
+    .then((id) => chrome.tabGroups.update(id, { title: 'Research' })).then(() => true)`);
+  const lookalike = await call('page_snapshot', { tabId: blankId });
+  check(
+    "a group of the user's with the same name stays out of reach",
+    lookalike.text.startsWith('TAB_NOT_SHARED'),
+    lookalike.text,
+  );
+  await inExtension(`chrome.tabs.ungroup([${blankId}]).then(() => true)`);
+  for (const extra of [first, joined, twinA, twinB])
+    await call('tabs_close', { tabId: extra.tab.id });
+  check('closing the extra tabs leaves the first one', (await json('tabs_list')).tabs.length === 1);
 
   const on = (name, args = {}) => call(name, { tabId: tab.id, ...args });
   const outline = async (args) => (await on('page_snapshot', args)).text;
@@ -640,6 +869,27 @@ try {
   );
   await updateSettings({ siteAccess: 'all', blockedSites: [] });
 
+  // --- animation styles ---
+  await outline();
+  check('the default animation is Aurora', await hasOverlayButton('aurora'));
+  for (const style of ['aurora', 'orbit', 'viewfinder', 'ripple', 'none']) {
+    await updateSettings({ indicator: style });
+    await sleep(300);
+    const fresh = await outline();
+    await on('page_type', { ref: refIn(fresh, /\[(e\d+)\] textbox "Your name"/), text: style });
+    await on('page_click', { ref: refIn(fresh, /\[(e\d+)\] button "Greet"/) });
+    await sleep(220);
+    await snap(style);
+    check(
+      `${style}: shown, with the badge, and input still reaches the page`,
+      (await hasOverlayButton(style)) &&
+        (await hasOverlayButton('itsme-stop')) &&
+        (await outline()).includes(`Hello, ${style}!`),
+    );
+  }
+  await updateSettings({ indicator: 'aurora' });
+  await sleep(300);
+
   // --- badge and stop ---
   await outline();
   check('the page shows that itsme is using it', await hasOverlayButton('itsme-stop'));
@@ -671,16 +921,209 @@ try {
   const fresh = await json('page_navigate', { url: `${base}/second` });
   check('page_navigate opens a tab when none is open', fresh.tab.title === 'Second');
 
-  // With the server gone nothing keeps the service worker alive past 30s, so only
-  // the alarm can bring the connection back.
-  console.log('Stopping the server for 45s to let the service worker go idle...');
-  await client.close();
-  await sleep(45_000);
-  client = await startServer();
-  const again = await waitForBrowser(45_000);
-  check('extension reconnects after the worker was idle', again !== null);
-  if (again) {
-    check('commands work after reconnecting', (await json('tabs_list')).tabs.length === 1);
+  // --- automations ---
+  {
+    const stored = async (id) =>
+      (
+        await inExtension(`chrome.storage.local.get('automations').then((all) => all.automations)`)
+      ).find((automation) => automation.id === id);
+    const automationsPage = (expression) => inExtensionPage('automations.html', expression);
+    // What the page's own buttons send; the background takes it from extension pages only.
+    const press = (action, id) =>
+      automationsPage(
+        `chrome.runtime.sendMessage({ type: 'itsme/automation', action: '${action}', id: '${id}' })`,
+      );
+    const idOf = (text) => /^\[(\w+)\]/.exec(text)?.[1];
+    const hitsBy = (who) => hits.filter((hit) => hit.who === who);
+    const everySecond = (name, steps) =>
+      call('automation_create', {
+        name,
+        url: `${base}/auto`,
+        schedule: { every: 'interval', seconds: 1 },
+        steps,
+      });
+    const badge = () => inExtension(`chrome.action.getBadgeText({})`);
+
+    const created = await everySecond('Ping every second', [
+      { do: 'type', target: { role: 'textbox', name: 'Who' }, text: 'bot' },
+      { do: 'click', target: { role: 'button', name: 'Ping' } },
+    ]);
+    const pingId = idOf(created.text);
+    check(
+      'automation_create saves it as waiting for approval',
+      Boolean(pingId) && created.text.includes('waiting for the user to approve it'),
+      created.text,
+    );
+    await sleep(2_500);
+    check('an automation does not run before it is approved', hits.length === 0);
+    check('the toolbar button shows that one is waiting', (await badge()) === '1');
+    const listed = await automationsPage(`document.getElementById('list').textContent`);
+    check(
+      'the automations page lists it in plain words',
+      ['Ping every second', 'Every 1 s', 'Click button "Ping"', 'Approve'].every((part) =>
+        listed.includes(part),
+      ),
+      listed,
+    );
+    await automationsPage(
+      `(document.querySelector('[data-action="approve"]').click(), new Promise((done) => setTimeout(done, 500)))`,
+    );
+    check('a scripted click on Approve does nothing', (await stored(pingId)).status === 'pending');
+
+    await press('approve', pingId);
+    await sleep(6_500);
+    const pings = hitsBy('bot');
+    const gaps = pings.slice(1).map((hit, index) => hit.at - pings[index].at);
+    const median = [...gaps].sort((a, b) => a - b)[Math.floor(gaps.length / 2)];
+    console.log(
+      `     every 1 s, in a background tab: ${pings.length} runs, gaps ${gaps.join(' ')} ms`,
+    );
+    check(
+      'once approved it runs by itself, about once a second',
+      pings.length >= 4 && median >= 800 && median <= 1_600,
+      `${pings.length} runs, median gap ${median} ms`,
+    );
+    check('its tab is out of reach of the tools', (await json('tabs_list')).tabs.length === 1);
+    const autoGroups = await inExtension(`chrome.tabGroups.query({ title: 'itsme automations' })`);
+    check('its tab sits in a tab group of its own', autoGroups.length === 1);
+
+    const paused = await call('automation_pause', { id: pingId });
+    await sleep(1_500);
+    const seen = hits.length;
+    await sleep(2_500);
+    check(
+      'automation_pause stops it',
+      paused.text.includes('paused (Paused by the AI app)') && hits.length === seen,
+      paused.text,
+    );
+    await press('resume', pingId);
+    await sleep(2_500);
+    check('turning it on in the extension starts it again', hits.length > seen);
+
+    await pressOverlayButton('itsme-stop', `${base}/auto`);
+    await sleep(1_000);
+    let state = await stored(pingId);
+    check(
+      'Stop on its page pauses the automation and leaves the bridge on',
+      state.status === 'paused' &&
+        state.pausedBecause === 'Stopped on the page' &&
+        (await json('browser_status')).browsers.length === 1,
+      JSON.stringify(state),
+    );
+
+    await press('resume', pingId);
+    await sleep(2_000);
+    const autoTabs = await inExtension(
+      `chrome.tabs.query({}).then((all) => all.filter((t) => t.url === '${base}/auto').map((t) => t.id))`,
+    );
+    check('it keeps to one tab', autoTabs.length === 1, JSON.stringify(autoTabs));
+    await inExtension(`chrome.tabs.remove(${JSON.stringify(autoTabs)}).then(() => true)`);
+    await sleep(1_000);
+    state = await stored(pingId);
+    check(
+      'closing its tab pauses a repeating automation',
+      state.status === 'paused' && state.pausedBecause === 'Its tab was closed',
+      JSON.stringify(state),
+    );
+    await call('automation_remove', { id: pingId });
+
+    const doomed = {
+      missing: [{ do: 'click', target: { role: 'button', name: 'Nope' } }],
+      secret: [{ do: 'type', target: { name: 'Secret' }, text: 'x' }],
+      away: [{ do: 'click', target: { role: 'link', name: 'Away' } }],
+    };
+    const doomedIds = {};
+    for (const [name, steps] of Object.entries(doomed)) {
+      doomedIds[name] = idOf((await everySecond(name, steps)).text);
+      await press('approve', doomedIds[name]);
+    }
+    await sleep(12_000);
+    const expected = {
+      missing: 'No button "Nope" on the page',
+      secret: 'do not type into password fields',
+      away: 'left the approved sites for localhost',
+    };
+    for (const [name, reason] of Object.entries(expected)) {
+      state = await stored(doomedIds[name]);
+      check(
+        `"${name}" fails with its reason and pauses itself after three tries`,
+        state.status === 'paused' &&
+          state.pausedBecause === 'Failed 3 times in a row' &&
+          (state.history.at(-1)?.note ?? '').includes(reason),
+        JSON.stringify(state.history),
+      );
+    }
+    check('the toolbar button counts the ones that gave up', (await badge()) === '3');
+    const listing = await call('automation_list');
+    check(
+      'automation_list reports why the latest run failed',
+      listing.text.includes('the latest failed: Step 1 (Click button "Nope")'),
+      listing.text,
+    );
+    for (const id of Object.values(doomedIds)) await call('automation_remove', { id });
+    const leftovers = await inExtension(
+      `chrome.tabs.query({}).then((all) => all.filter((t) => t.url.includes('/auto') || t.url.includes('localhost')).length)`,
+    );
+    check(
+      'automation_remove deletes them and closes their tabs',
+      (await call('automation_list')).text === 'No automations' &&
+        leftovers === 0 &&
+        (await badge()) === '',
+      `${leftovers} tabs left`,
+    );
+
+    // A daily one, due at the next full minute that is at least 20 s away.
+    const due = new Date(Date.now() + 20_000);
+    due.setMinutes(due.getMinutes() + 1, 0, 0);
+    const clock = `${String(due.getHours()).padStart(2, '0')}:${String(due.getMinutes()).padStart(2, '0')}`;
+    hits.length = 0;
+    const daily = await call('automation_create', {
+      name: 'Daily ping',
+      url: `${base}/auto`,
+      schedule: { every: 'day', at: clock },
+      steps: [
+        { do: 'type', target: { role: 'textbox', name: 'Who' }, text: 'daily' },
+        { do: 'click', target: { role: 'button', name: 'Ping' } },
+        { do: 'wait', text: 'pinged daily' },
+      ],
+    });
+    const dailyId = idOf(daily.text);
+    await press('approve', dailyId);
+    await sleep(2_000);
+    check('a daily automation waits for its time', hits.length === 0);
+
+    // With the server gone nothing keeps the service worker alive past 30s, so only
+    // alarms can bring the connection back, or start the daily automation on time.
+    const idleMs = Math.max(45_000, due.getTime() - Date.now() + 10_000);
+    console.log(
+      `Stopping the server for ${Math.round(idleMs / 1000)}s; "Daily ping" is due at ${clock}...`,
+    );
+    await client.close();
+    await sleep(idleMs);
+    const [ran] = hitsBy('daily');
+    check(
+      'the daily automation ran on time with no server and no AI app running',
+      hits.length === 1 && ran !== undefined && Math.abs(ran.at - due.getTime()) < 8_000,
+      ran ? `${ran.at - due.getTime()} ms after its time, ${hits.length} runs` : 'it did not run',
+    );
+    if (ran) console.log(`     daily run started ${ran.at - due.getTime()} ms after ${clock}`);
+
+    client = await startServer();
+    const again = await waitForBrowser(45_000);
+    check('extension reconnects after the worker was idle', again !== null);
+    if (again) {
+      check('commands work after reconnecting', (await json('tabs_list')).tabs.length === 1);
+      const report = await call('automation_list');
+      const open = await inExtension(
+        `chrome.tabs.query({}).then((all) => all.filter((t) => t.url.includes('/auto')).length)`,
+      );
+      check(
+        'a daily run is on the record and its tab is closed again',
+        report.text.includes('1 run(s); the latest worked') && open === 0,
+        `${report.text}\n${open} tabs open`,
+      );
+      await call('automation_remove', { id: dailyId });
+    }
   }
 } finally {
   chrome.kill();

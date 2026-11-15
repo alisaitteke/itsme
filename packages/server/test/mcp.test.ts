@@ -202,6 +202,57 @@ describe('MCP server', () => {
     ]);
   });
 
+  it('says that a new automation waits for the user', async () => {
+    let received: unknown;
+    await connectFakeExtension(port, {
+      'automation.create': (params) => {
+        received = params;
+        return {
+          automation: {
+            ...(params as object),
+            id: 'ab12cd34',
+            status: 'pending',
+            createdAt: 0,
+            runs: 0,
+            failures: 0,
+            history: [],
+          },
+        };
+      },
+    });
+
+    const result = await client.callTool({
+      name: 'automation_create',
+      arguments: {
+        name: 'Check in',
+        url: 'https://example.com/',
+        schedule: { every: 'day', at: '09:00' },
+        steps: [{ do: 'type', target: { name: 'Note' }, text: 'here' }],
+      },
+    });
+
+    expect(received).toMatchObject({ steps: [{ do: 'type', submit: false }] });
+    const text = (result.content as Array<{ text: string }>)[0]?.text ?? '';
+    expect(text.split('\n').slice(0, 4)).toEqual([
+      '[ab12cd34] "Check in": waiting for the user to approve it',
+      '  Every day at 09:00, on https://example.com/',
+      '  1. Type "here" into element "Note"',
+      '  Has not run yet',
+    ]);
+    expect(text).toContain('You cannot approve it yourself');
+  });
+
+  it('offers no tool that switches an automation on', async () => {
+    const { tools } = await client.listTools();
+    const names = tools.map((tool) => tool.name).filter((name) => name.startsWith('automation_'));
+    expect(names.sort()).toEqual([
+      'automation_create',
+      'automation_list',
+      'automation_pause',
+      'automation_remove',
+    ]);
+  });
+
   it('answers OK for a command with no result', async () => {
     await connectFakeExtension(port, { 'page.click': () => ({}) });
     const result = await client.callTool({ name: 'page_click', arguments: { ref: 'e1' } });

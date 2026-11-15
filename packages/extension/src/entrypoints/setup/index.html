@@ -1,0 +1,59 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Set up itsme</title>
+    <link rel="stylesheet" href="../../ui/base.css" />
+    <link rel="stylesheet" href="./style.css" />
+  </head>
+  <body>
+    <main>
+      <h1>Set up itsme</h1>
+      <p class="lede">
+        itsme lets an AI app use this browser: open tabs, read pages, click and type. The
+        extension is installed. One step is left.
+      </p>
+
+      <section>
+        <h2>Add itsme to your AI app</h2>
+        <ul id="clients"></ul>
+        <p id="next" class="next" role="status" hidden></p>
+        <details>
+          <summary>Add it by hand</summary>
+          <label>
+            <span>App</span>
+            <select id="client"></select>
+          </label>
+          <pre id="snippet"></pre>
+          <p id="where" class="hint"></p>
+          <button id="copy" type="button" class="secondary">Copy</button>
+        </details>
+      </section>
+
+      <section>
+        <h2>Check the connection</h2>
+        <p class="status">
+          <span id="dot" class="dot" data-state="disconnected"></span>
+          <span id="status" role="status">Checking…</span>
+        </p>
+        <p class="hint">
+          The app starts itsme when it starts, so restart it after adding. This turns green once
+          it is running.
+        </p>
+      </section>
+
+      <section>
+        <h2>Try it</h2>
+        <p>Ask the app: <q>Open example.com in my browser and tell me what it says.</q></p>
+        <p class="hint">
+          The tab opens in a tab group of its own, and the page asks you before itsme uses a new
+          site. To let it work on a tab you already have open, press the itsme button in the
+          toolbar and choose "Share this tab".
+        </p>
+      </section>
+    </main>
+
+    <script type="module" src="./main.ts"></script>
+  </body>
+</html>

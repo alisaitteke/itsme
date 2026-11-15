@@ -7,6 +7,7 @@ import {
   decodeMessage,
   EXTENSION_PATH,
   encodeMessage,
+  type Message,
   PROTOCOL_VERSION,
 } from '@itsme/protocol';
 import { WebSocket } from 'ws';
@@ -49,6 +50,8 @@ export interface FakeExtension {
   socket: WebSocket;
   /** Resolves with the close code. */
   closed: Promise<number>;
+  /** The server's answer to the hello; absent when it closed the socket instead. */
+  welcome?: Message;
 }
 
 /** Stands in for the browser: says hello, then answers requests from `handlers`. */
@@ -91,6 +94,7 @@ export async function connectFakeExtension(
       browser: browserInfo,
     }),
   );
-  await welcomed;
-  return { socket, closed };
+  const answer = await welcomed;
+  const welcome = Array.isArray(answer) ? decodeMessage(String(answer[0])) : undefined;
+  return { socket, closed, welcome };
 }

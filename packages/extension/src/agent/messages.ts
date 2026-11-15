@@ -1,4 +1,11 @@
-import type { CommandParams, CommandResult, Modifier, Target, WireError } from '@itsme/protocol';
+import type {
+  CommandParams,
+  CommandResult,
+  Locator,
+  Modifier,
+  Target,
+  WireError,
+} from '@itsme/protocol';
 import type { KeyInfo } from '../shared/keys.ts';
 
 // Type-only imports from the protocol package keep zod out of the injected script.
@@ -23,8 +30,9 @@ export type AgentCall =
   | { kind: 'prompt'; host: string }
   | { kind: 'hideIndicator' }
   | { kind: 'hasText'; text: string }
+  | { kind: 'resolve'; locator: Locator }
   | { kind: 'upload'; ref: string; files: UploadFile[] }
-  | { kind: 'locate'; target: Target; scroll: boolean }
+  | { kind: 'locate'; target: Target; scroll: boolean; why: 'click' | 'hover' | 'drag' }
   | { kind: 'click'; target: Target; button: Button; count: number; modifiers: Modifier[] }
   | { kind: 'hover'; target: Target }
   | { kind: 'focus'; ref: string; select: boolean }
@@ -42,6 +50,8 @@ export interface AgentResults {
   prompt: Record<string, never>;
   hideIndicator: Record<string, never>;
   hasText: boolean;
+  /** `ref` is null when nothing on the page matches. */
+  resolve: { ref: string | null; password: boolean };
   upload: Record<string, never>;
   /** Viewport point to press, and whether a real pointer there would hit the target. */
   locate: { x: number; y: number; hittable: boolean; inViewport: boolean };

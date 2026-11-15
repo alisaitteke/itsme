@@ -1,15 +1,6 @@
 import { z } from 'zod';
-
-const httpUrl = z.string().refine(
-  (value) => {
-    try {
-      return ['http:', 'https:'].includes(new URL(value).protocol);
-    } catch {
-      return false;
-    }
-  },
-  { error: 'Must be an http(s) URL' },
-);
+import { automationInputSchema, automationSchema } from './automation.ts';
+import { httpUrl } from './url.ts';
 
 const tabId = z.number().int().describe('Tab id from tabs_list');
 const optionalTabId = tabId
@@ -30,12 +21,37 @@ export const modifierSchema = z.enum(['alt', 'ctrl', 'meta', 'shift']);
 export type Modifier = z.infer<typeof modifierSchema>;
 const modifiers = z.array(modifierSchema).default([]).describe('Keys held down meanwhile');
 
+/** The colors a browser offers for a tab group. */
+export const groupColorSchema = z.enum([
+  'grey',
+  'blue',
+  'red',
+  'yellow',
+  'green',
+  'pink',
+  'purple',
+  'cyan',
+  'orange',
+]);
+export type GroupColor = z.infer<typeof groupColorSchema>;
+
+export const DEFAULT_GROUP = 'itsme';
+
+const groupName = z.string().trim().min(1).max(40);
+const groupColor = groupColorSchema
+  .optional()
+  .describe(
+    'Color of the group. Pick one that suits the topic; a new group gets a random one otherwise',
+  );
+
 export const tabSchema = z.object({
   id: z.number().int(),
   windowId: z.number().int(),
   url: z.string(),
   title: z.string(),
   active: z.boolean(),
+  /** Absent where the browser has no tab groups. */
+  group: z.object({ name: z.string(), color: z.string() }).optional(),
 });
 export type Tab = z.infer<typeof tabSchema>;
 
@@ -62,8 +78,22 @@ export const commands = {
     params: z.object({
       url: httpUrl,
       active: z.boolean().default(true).describe('Focus the new tab'),
+      group: groupName
+        .optional()
+        .describe(
+          `Tab group for the tab, created if it doesn't exist, e.g. "Flight prices". Defaults to "${DEFAULT_GROUP}"`,
+        ),
+      color: groupColor,
     }),
     result: tabResult,
+  }),
+  'tabs.group': command({
+    params: z.object({
+      tabIds: z.array(tabId).min(1).max(50),
+      group: groupName.describe("Tab group to move the tabs to, created if it doesn't exist"),
+      color: groupColor,
+    }),
+    result: z.object({ tabs: z.array(tabSchema) }),
   }),
   'tabs.close': command({
     params: z.object({ tabId }),
@@ -233,6 +263,22 @@ export const commands = {
       total: z.number().int(),
       recordingMs: z.number().int().describe('How long requests have been recorded'),
     }),
+  }),
+  'automation.create': command({
+    params: automationInputSchema,
+    result: z.object({ automation: automationSchema }),
+  }),
+  'automation.list': command({
+    params: empty,
+    result: z.object({ automations: z.array(automationSchema) }),
+  }),
+  'automation.pause': command({
+    params: z.object({ id: z.string().describe('Automation id from automation_list') }),
+    result: z.object({ automation: automationSchema }),
+  }),
+  'automation.remove': command({
+    params: z.object({ id: z.string().describe('Automation id from automation_list') }),
+    result: empty,
   }),
   'page.screenshot': command({
     params: z.object({ tabId: optionalTabId }),

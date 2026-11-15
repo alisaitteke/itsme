@@ -3,6 +3,7 @@
   <head>
     <meta charset="utf-8" />
     <title>itsme</title>
+    <link rel="stylesheet" href="../../ui/base.css" />
     <link rel="stylesheet" href="./style.css" />
   </head>
   <body>
@@ -14,54 +15,17 @@
       </div>
     </header>
 
-    <section class="share">
+    <div class="actions">
       <button id="share" type="button" disabled>Share this tab</button>
-      <small>itsme only sees the tabs in its tab group.</small>
-    </section>
+      <small>itsme only sees the tabs in its own tab groups.</small>
+      <button id="add" type="button" class="secondary">Add to an AI app</button>
+      <button id="automations" type="button" class="secondary">Automations</button>
+    </div>
 
-    <form id="settings">
-      <label class="toggle">
-        <span>Allow the MCP server to control this browser</span>
-        <input id="enabled" type="checkbox" />
-      </label>
-      <label id="real-input-row" class="toggle" hidden>
-        <span>
-          Use the debugger
-          <small>
-            Real mouse and keyboard input, console and network. The browser shows a debugging bar
-            while it is in use.
-          </small>
-        </span>
-        <input id="real-input" type="checkbox" />
-      </label>
-      <label class="toggle">
-        <span>
-          Ask before using a new site
-          <small>A prompt appears on the page the first time.</small>
-        </span>
-        <input id="ask-sites" type="checkbox" />
-      </label>
-
-      <details>
-        <summary>Sites</summary>
-        <p class="label">Allowed</p>
-        <ul id="allowed"></ul>
-        <label>
-          <span>Blocked, one per line</span>
-          <textarea id="blocked" rows="3" spellcheck="false" placeholder="bank.example"></textarea>
-        </label>
-      </details>
-
-      <label>
-        <span>Port</span>
-        <input id="port" type="number" min="1" max="65535" required />
-      </label>
-      <label>
-        <span>Token</span>
-        <input id="token" type="password" autocomplete="off" placeholder="Only if the server sets one" />
-      </label>
-      <button type="submit">Save</button>
-    </form>
+    <footer>
+      <button id="power" type="button" class="link"></button>
+      <button id="settings" type="button" class="link">Settings</button>
+    </footer>
 
     <script type="module" src="./main.ts"></script>
   </body>

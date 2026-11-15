@@ -18,10 +18,15 @@ const helloSchema = z.object({
   browser: browserInfoSchema.optional(),
 });
 
+/** How the server was started, so the extension can show how to add it to another client. */
+export const launchSchema = z.object({ command: z.string(), args: z.array(z.string()) });
+export type Launch = z.infer<typeof launchSchema>;
+
 const welcomeSchema = z.object({
   type: z.literal('welcome'),
   protocolVersion: z.number().int(),
   serverVersion: z.string(),
+  launch: launchSchema.optional(),
 });
 
 const requestSchema = z.object({

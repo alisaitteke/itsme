@@ -1,0 +1,86 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <title>itsme settings</title>
+    <link rel="stylesheet" href="../../ui/base.css" />
+    <link rel="stylesheet" href="./style.css" />
+  </head>
+  <body>
+    <header>
+      <span id="dot" class="dot" data-state="disconnected"></span>
+      <div>
+        <h1>itsme settings</h1>
+        <p id="status" role="status">Checking…</p>
+      </div>
+    </header>
+
+    <form id="settings">
+      <fieldset>
+        <legend>Control</legend>
+        <label class="toggle">
+          <span>Allow the MCP server to control this browser</span>
+          <input id="enabled" type="checkbox" />
+        </label>
+        <label id="real-input-row" class="toggle" hidden>
+          <span>
+            Use the debugger
+            <small>
+              Real mouse and keyboard input, console and network. The browser shows a debugging bar
+              while it is in use.
+            </small>
+          </span>
+          <input id="real-input" type="checkbox" />
+        </label>
+        <label>
+          <span>Animation while itsme uses a tab</span>
+          <select id="indicator">
+            <option value="aurora">Aurora (soft glow)</option>
+            <option value="orbit">Orbit (light trails)</option>
+            <option value="viewfinder">Viewfinder (corner marks)</option>
+            <option value="ripple">Ripple (dots)</option>
+            <option value="none">Off (badge only)</option>
+          </select>
+        </label>
+      </fieldset>
+
+      <fieldset>
+        <legend>Sites</legend>
+        <label class="toggle">
+          <span>
+            Ask before using a new site
+            <small>A prompt appears on the page the first time.</small>
+          </span>
+          <input id="ask-sites" type="checkbox" />
+        </label>
+        <div>
+          <p class="label">Allowed</p>
+          <ul id="allowed"></ul>
+        </div>
+        <label>
+          <span>Blocked, one per line</span>
+          <textarea id="blocked" rows="3" spellcheck="false" placeholder="bank.example"></textarea>
+        </label>
+      </fieldset>
+
+      <fieldset>
+        <legend>Connection</legend>
+        <label>
+          <span>Port</span>
+          <input id="port" type="number" min="1" max="65535" required />
+        </label>
+        <label>
+          <span>Token</span>
+          <input id="token" type="password" autocomplete="off" placeholder="Only if the server sets one" />
+        </label>
+      </fieldset>
+
+      <div class="save">
+        <button type="submit">Save</button>
+        <span id="saved" class="hint" role="status"></span>
+      </div>
+    </form>
+
+    <script type="module" src="./main.ts"></script>
+  </body>
+</html>

@@ -1,4 +1,4 @@
-import type { Match } from '@itsme/protocol';
+import type { Locator, Match } from '@itsme/protocol';
 import { isInteractive, isLeaf, nameOf, roleOf, stateOf } from './describe.ts';
 import { clean, composedChildren, frameDocument, isInput, isRendered, visibleText } from './dom.ts';
 import type { AgentCall, AgentResults } from './messages.ts';
@@ -150,6 +150,37 @@ export function find(query: string): AgentResults['find'] {
 
   if (document.body) visit(document.body);
   return { matches, more };
+}
+
+/**
+ * Finds the element an automation step names: the first whose role and name are what a
+ * snapshot prints for it, or failing that the first whose name contains the wanted one.
+ */
+export function resolveLocator(locator: Locator): AgentResults['resolve'] {
+  const wanted = locator.name.trim().toLowerCase();
+  const found: { exact: Element | null; partial: Element | null } = { exact: null, partial: null };
+
+  const visit = (el: Element): void => {
+    if (found.exact || SKIPPED_TAGS.has(el.localName)) return;
+    if (!isRendered(el) && !isFileInput(el)) return;
+    const role = roleOf(el);
+    const name = (role ? nameOf(el, role) : clean(ownText(el), MAX_TEXT_LINE)).toLowerCase();
+    if (name && (!locator.role || locator.role === (role ?? 'text'))) {
+      if (name === wanted) found.exact = el;
+      else if (!found.partial && name.includes(wanted)) found.partial = el;
+    }
+    if (isLeaf(role)) return;
+    for (const child of composedChildren(el)) {
+      if (child.nodeType === Node.ELEMENT_NODE) visit(child as Element);
+    }
+  };
+  if (document.body) visit(document.body);
+
+  const el = found.exact ?? found.partial;
+  return {
+    ref: el ? refFor(el) : null,
+    password: el !== null && isInput(el) && el.type === 'password',
+  };
 }
 
 export function hasText(text: string): boolean {

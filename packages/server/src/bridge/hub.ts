@@ -163,6 +163,7 @@ export class Hub implements Link {
         type: 'welcome',
         protocolVersion: PROTOCOL_VERSION,
         serverVersion: this.#options.serverVersion,
+        launch: this.#options.launch,
       });
       if (role === 'extension' && hello.browser) this.#attachExtension(socket, hello.browser);
       else this.#attachPeer(socket);

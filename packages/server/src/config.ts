@@ -14,7 +14,7 @@ export interface Config {
 
 export type CliAction = { kind: 'run'; config: Config } | { kind: 'help' } | { kind: 'version' };
 
-export const usage = `Usage: itsme [options]
+export const usage = `Usage: itsme-mcp [options]
 
 Starts an MCP server on stdio and a local bridge for the browser extension.
 
@@ -30,6 +30,16 @@ Environment:
   ITSME_LOG_LEVEL    debug | info | warn | error | silent (default info)
   ITSME_UPLOAD_DIRS  Folders page_upload may read from, separated by "${delimiter}" (default: none)
 `;
+
+/**
+ * A setting from the environment. A Claude Desktop bundle fills these in from its own
+ * settings form, and an optional field left empty can arrive blank or as the
+ * placeholder itself; both count as not set.
+ */
+function setting(env: NodeJS.ProcessEnv, name: string): string | undefined {
+  const value = env[name]?.trim();
+  return value && !value.startsWith('${') ? value : undefined;
+}
 
 function positiveInt(value: string, name: string, max: number): number {
   const parsed = Number(value);
@@ -51,20 +61,20 @@ export function parseCli(argv: string[], env: NodeJS.ProcessEnv): CliAction {
   if (values.help) return { kind: 'help' };
   if (values.version) return { kind: 'version' };
 
-  const port = values.port ?? env.ITSME_PORT;
-  const timeout = env.ITSME_TIMEOUT_MS;
-  const logLevel = env.ITSME_LOG_LEVEL ?? 'info';
+  const port = values.port ?? setting(env, 'ITSME_PORT');
+  const timeout = setting(env, 'ITSME_TIMEOUT_MS');
+  const logLevel = setting(env, 'ITSME_LOG_LEVEL') ?? 'info';
   if (!isLogLevel(logLevel)) throw new Error(`Unknown ITSME_LOG_LEVEL "${logLevel}"`);
 
   return {
     kind: 'run',
     config: {
       port: port ? positiveInt(port, 'Port', 65_535) : DEFAULT_PORT,
-      token: env.ITSME_TOKEN || undefined,
+      token: setting(env, 'ITSME_TOKEN'),
       requestTimeoutMs: timeout
         ? positiveInt(timeout, 'ITSME_TIMEOUT_MS', 600_000)
         : DEFAULT_REQUEST_TIMEOUT_MS,
-      uploadDirs: (env.ITSME_UPLOAD_DIRS ?? '').split(delimiter).filter(Boolean),
+      uploadDirs: (setting(env, 'ITSME_UPLOAD_DIRS') ?? '').split(delimiter).filter(Boolean),
       logLevel,
     },
   };

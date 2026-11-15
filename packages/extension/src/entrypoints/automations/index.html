@@ -1,0 +1,29 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>itsme automations</title>
+    <link rel="stylesheet" href="../../ui/base.css" />
+    <link rel="stylesheet" href="./style.css" />
+  </head>
+  <body>
+    <main>
+      <h1>Automations</h1>
+      <p class="lede">
+        Steps an AI app saved for this browser to repeat by itself. Nothing here runs until you
+        approve it, and each one only works on the sites listed with it.
+      </p>
+      <p id="off" class="notice" hidden>
+        itsme is turned off, so no automation runs. Turn it on from the toolbar button.
+      </p>
+      <p id="error" class="notice" role="alert" hidden></p>
+      <ul id="list"></ul>
+      <p id="empty" class="hint" hidden>
+        None yet. Ask your AI app for one, for example: "Every morning at 9, open example.com and
+        press Check in."
+      </p>
+    </main>
+    <script type="module" src="./main.ts"></script>
+  </body>
+</html>

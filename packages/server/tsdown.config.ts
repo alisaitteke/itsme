@@ -4,8 +4,9 @@ export default defineConfig({
   entry: ['src/cli.ts'],
   format: 'esm',
   platform: 'node',
-  target: 'node22',
+  target: 'node20',
   clean: true,
-  // The protocol package is private, so it ships inside the bundle.
-  deps: { alwaysBundle: ['@itsme/protocol'] },
+  // One file with everything in it: `npx` has nothing to install, and the Claude
+  // Desktop bundle needs no node_modules.
+  deps: { alwaysBundle: [/./] },
 });

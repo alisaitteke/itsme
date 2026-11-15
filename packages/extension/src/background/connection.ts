@@ -9,6 +9,7 @@ import {
   PROTOCOL_VERSION,
   type RequestMessage,
   toWireError,
+  type WelcomeMessage,
 } from '@itsme/protocol';
 
 export type ConnectionState = 'disconnected' | 'connecting' | 'connected';
@@ -26,6 +27,7 @@ export interface ConnectionOptions {
   browser: BrowserInfo;
   onRequest(command: string, params: unknown): Promise<unknown>;
   onDisconnect?(): void;
+  onWelcome?(welcome: WelcomeMessage): void;
   /** For tests: Node has to set the Origin header that a browser adds by itself. */
   createSocket?(url: string): WebSocket;
   reconnectDelaysMs?: readonly number[];
@@ -127,6 +129,7 @@ export class BridgeConnection {
       this.#lastError = undefined;
       this.#attempt = 0;
       this.#keepaliveTimer = setInterval(() => this.#keepalive(socket), KEEPALIVE_INTERVAL_MS);
+      this.#options.onWelcome?.(message);
     } else if (message.type === 'request') {
       void this.#answer(socket, message);
     }

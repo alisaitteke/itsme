@@ -27,6 +27,18 @@ export async function getTab(tabId: number): Promise<BrowserTab> {
   }
 }
 
+export async function createTab(url: string, active: boolean): Promise<BrowserTab> {
+  try {
+    return (await browser.tabs.create({ url, active })) as BrowserTab;
+  } catch (error) {
+    // A browser can be running with no window, which on macOS is common. Open one.
+    const created = await browser.windows.create({ url, focused: active });
+    const tab = created?.tabs?.[0];
+    if (tab?.id === undefined) throw error;
+    return tab as BrowserTab;
+  }
+}
+
 /**
  * Resolves when the tab finishes loading, or after a timeout: a page that is slow to
  * settle is still usable. Call it before starting the navigation so no event is missed.

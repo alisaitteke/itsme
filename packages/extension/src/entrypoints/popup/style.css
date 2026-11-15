@@ -1,186 +1,20 @@
-:root {
-  color-scheme: light dark;
-  --text: #111827;
-  --muted: #6b7280;
-  --border: #d1d5db;
-  --surface: #ffffff;
-  --accent: #2563eb;
-  font:
-    13px / 1.4 system-ui,
-    sans-serif;
-}
-
-@media (prefers-color-scheme: dark) {
-  :root {
-    --text: #f3f4f6;
-    --muted: #9ca3af;
-    --border: #4b5563;
-    --surface: #1f2937;
-    --accent: #60a5fa;
-  }
-}
-
 body {
   width: 280px;
-  margin: 0;
-  padding: 14px;
-  color: var(--text);
-  background: var(--surface);
 }
 
-header {
-  display: flex;
-  gap: 10px;
-  align-items: center;
-  margin-bottom: 14px;
-}
-
-h1 {
-  margin: 0;
-  font-size: 14px;
-}
-
-#status {
-  margin: 0;
-  color: var(--muted);
-}
-
-.dot {
-  flex: none;
-  width: 10px;
-  height: 10px;
-  border-radius: 50%;
-  background: #9ca3af;
-}
-
-.dot[data-state="connected"] {
-  background: #16a34a;
-}
-
-.dot[data-state="connecting"] {
-  background: #d97706;
-}
-
-.dot[data-state="disconnected"] {
-  background: #dc2626;
-}
-
-.share {
+.actions {
   display: grid;
-  gap: 4px;
-  margin-bottom: 14px;
-  padding-bottom: 14px;
-  border-bottom: 1px solid var(--border);
+  gap: 8px;
 }
 
-button:disabled {
-  opacity: 0.5;
-  cursor: default;
+.actions small {
+  margin: -4px 0 4px;
 }
 
-button.secondary {
-  color: var(--text);
-  background: transparent;
-  border: 1px solid var(--border);
-}
-
-form {
-  display: grid;
-  gap: 10px;
-}
-
-label {
-  display: grid;
-  gap: 4px;
-}
-
-label.toggle {
-  grid-template-columns: 1fr auto;
-  align-items: center;
-  gap: 10px;
-}
-
-details {
-  padding: 8px 10px;
-  border: 1px solid var(--border);
-  border-radius: 6px;
-}
-
-summary {
-  cursor: pointer;
-  font-weight: 600;
-}
-
-details[open] summary {
-  margin-bottom: 8px;
-}
-
-.label {
-  margin: 0 0 4px;
-}
-
-#allowed {
-  margin: 0 0 10px;
-  padding: 0;
-  list-style: none;
-  color: var(--muted);
-}
-
-#allowed li {
+footer {
   display: flex;
   justify-content: space-between;
-  align-items: center;
-  color: var(--text);
-}
-
-button.remove {
-  padding: 0 6px;
-  font-weight: 400;
-  color: var(--muted);
-  background: transparent;
-}
-
-textarea {
-  padding: 6px 8px;
-  font: inherit;
-  color: inherit;
-  background: transparent;
-  border: 1px solid var(--border);
-  border-radius: 6px;
-  resize: vertical;
-}
-
-label[hidden] {
-  display: none;
-}
-
-small {
-  display: block;
-  color: var(--muted);
-}
-
-input[type="number"],
-input[type="password"] {
-  padding: 6px 8px;
-  font: inherit;
-  color: inherit;
-  background: transparent;
-  border: 1px solid var(--border);
-  border-radius: 6px;
-}
-
-button {
-  padding: 7px;
-  font: inherit;
-  font-weight: 600;
-  color: #ffffff;
-  background: #2563eb;
-  border: 0;
-  border-radius: 6px;
-  cursor: pointer;
-}
-
-:focus-visible {
-  outline: 2px solid var(--accent);
-  outline-offset: 1px;
+  margin-top: 14px;
+  padding-top: 10px;
+  border-top: 1px solid var(--border);
 }

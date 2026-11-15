@@ -1,0 +1,57 @@
+body {
+  max-width: 440px;
+  min-width: 320px;
+}
+
+form,
+fieldset {
+  display: grid;
+  gap: 12px;
+}
+
+fieldset {
+  margin: 0;
+  padding: 12px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+}
+
+legend {
+  padding: 0 4px;
+  font-weight: 600;
+}
+
+.label {
+  margin: 0 0 4px;
+}
+
+#allowed {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  color: var(--muted);
+}
+
+#allowed li {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  color: var(--text);
+}
+
+button.remove {
+  padding: 0 6px;
+  font-weight: 400;
+  color: var(--muted);
+  background: transparent;
+}
+
+.save {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.save button {
+  min-width: 96px;
+}

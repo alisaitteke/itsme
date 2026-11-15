@@ -1,35 +1,43 @@
 import type { Tab } from '@itsme/protocol';
 import { browser } from 'wxt/browser';
 import type { Handlers } from '../router.ts';
-import { addToSession, sessionTab, sessionTabs } from '../session-tabs.ts';
+import {
+  addToSession,
+  describeTab,
+  describeTabs,
+  type GroupOptions,
+  sessionTab,
+  sessionTabs,
+} from '../session-tabs.ts';
 import { refuseBlocked } from '../site-access.ts';
-import { type BrowserTab, getTab, toTab, watchLoad } from '../tabs.ts';
+import { createTab, watchLoad } from '../tabs.ts';
 
-async function createTab(url: string, active: boolean): Promise<BrowserTab> {
-  try {
-    return (await browser.tabs.create({ url, active })) as BrowserTab;
-  } catch (error) {
-    // A browser can be running with no window, which on macOS is common. Open one.
-    const created = await browser.windows.create({ url, focused: active });
-    const tab = created?.tabs?.[0];
-    if (tab?.id === undefined) throw error;
-    return tab as BrowserTab;
-  }
-}
-
-/** Opens a URL in a new tab of the itsme group and waits for it to load. */
-export async function openSessionTab(url: string, active: boolean): Promise<Tab> {
+/** Opens a URL in a new tab of one of itsme's groups and waits for it to load. */
+export async function openSessionTab(
+  url: string,
+  active: boolean,
+  group: GroupOptions = {},
+): Promise<Tab> {
   await refuseBlocked(url);
   const created = await createTab(url, active);
-  await addToSession(created.id);
+  await addToSession(created.id, group);
   await watchLoad(created.id, true);
-  return toTab(await getTab(created.id));
+  return describeTab(created.id);
 }
 
 export const tabHandlers: Handlers = {
-  'tabs.list': async () => ({ tabs: (await sessionTabs()).map(toTab) }),
+  'tabs.list': async () => ({ tabs: await describeTabs(await sessionTabs()) }),
 
-  'tabs.open': async ({ url, active }) => ({ tab: await openSessionTab(url, active) }),
+  'tabs.open': async ({ url, active, group, color }) => ({
+    tab: await openSessionTab(url, active, { name: group, color }),
+  }),
+
+  'tabs.group': async ({ tabIds, group, color }) => {
+    // Checked for every tab before any is moved: only tabs itsme already has can be regrouped.
+    for (const tabId of tabIds) await sessionTab(tabId);
+    for (const tabId of tabIds) await addToSession(tabId, { name: group, color });
+    return { tabs: await Promise.all(tabIds.map(describeTab)) };
+  },
 
   'tabs.close': async ({ tabId }) => {
     await sessionTab(tabId);
@@ -41,6 +49,6 @@ export const tabHandlers: Handlers = {
     const tab = await sessionTab(tabId);
     await browser.tabs.update(tabId, { active: true });
     await browser.windows.update(tab.windowId, { focused: true });
-    return { tab: toTab(await getTab(tabId)) };
+    return { tab: await describeTab(tabId) };
   },
 };

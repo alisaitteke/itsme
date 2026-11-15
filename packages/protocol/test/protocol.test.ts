@@ -25,6 +25,18 @@ describe('commands', () => {
     });
   });
 
+  it('takes a group name and color for a new tab', () => {
+    const { params } = commands['tabs.open'];
+    const url = 'https://example.com';
+    expect(params.parse({ url, group: '  Flight prices ', color: 'green' })).toMatchObject({
+      group: 'Flight prices',
+      color: 'green',
+    });
+    expect(params.safeParse({ url, group: '   ' }).success).toBe(false);
+    expect(params.safeParse({ url, group: 'x'.repeat(41) }).success).toBe(false);
+    expect(params.safeParse({ url, color: 'teal' }).success).toBe(false);
+  });
+
   it('only accepts http(s) URLs', () => {
     const { params } = commands['page.navigate'];
     expect(params.safeParse({ url: 'https://example.com/a?b=1' }).success).toBe(true);

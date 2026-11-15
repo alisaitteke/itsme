@@ -1,4 +1,4 @@
-import type { BrowserInfo } from '@itsme/protocol';
+import type { BrowserInfo, Launch } from '@itsme/protocol';
 import type { Logger } from '../logger.ts';
 
 /** A route to the browser: the hub itself, or a socket to another process's hub. */
@@ -13,6 +13,8 @@ export interface LinkOptions {
   token: string | undefined;
   requestTimeoutMs: number;
   serverVersion: string;
+  /** Passed on to the extension in the welcome. */
+  launch?: Launch;
   logger: Logger;
 }
 

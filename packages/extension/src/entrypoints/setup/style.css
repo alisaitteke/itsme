@@ -1,0 +1,104 @@
+body {
+  padding: 32px 16px 48px;
+  font-size: 15px;
+}
+
+main {
+  max-width: 560px;
+  margin: 0 auto;
+  display: grid;
+  gap: 28px;
+}
+
+h1 {
+  font-size: 26px;
+}
+
+h2 {
+  margin: 0 0 10px;
+  font-size: 16px;
+}
+
+p {
+  margin: 0;
+}
+
+.lede {
+  margin-top: -18px;
+  color: var(--muted);
+}
+
+section {
+  display: grid;
+  gap: 10px;
+}
+
+#clients {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+}
+
+#clients li {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 12px;
+}
+
+#clients li + li {
+  border-top: 1px solid var(--border);
+}
+
+#clients button {
+  min-width: 136px;
+}
+
+.next {
+  padding: 10px 12px;
+  background: var(--sunken);
+  border-radius: 8px;
+}
+
+summary {
+  cursor: pointer;
+  color: var(--accent);
+}
+
+pre {
+  max-height: 220px;
+  margin: 0;
+  padding: 10px;
+  overflow: auto;
+  font:
+    12px / 1.5 ui-monospace,
+    "SF Mono",
+    Menlo,
+    Consolas,
+    monospace;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  background: var(--sunken);
+  border-radius: 8px;
+}
+
+details[open] summary,
+details label,
+details pre,
+details .hint {
+  margin-bottom: 10px;
+}
+
+.status {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-weight: 600;
+}
+
+q {
+  font-style: italic;
+}

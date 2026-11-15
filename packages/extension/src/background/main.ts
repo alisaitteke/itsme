@@ -1,5 +1,7 @@
 import { BRIDGE_HOST, type BrowserInfo, EXTENSION_PATH } from '@itsme/protocol';
 import { browser } from 'wxt/browser';
+import { type AutomationActionResult, isAutomationAction } from '../shared/automations.ts';
+import { saveLaunch } from '../shared/launch.ts';
 import {
   isSiteDecision,
   isStatusRequest,
@@ -8,6 +10,7 @@ import {
 } from '../shared/runtime-messages.ts';
 import { loadSettings, onSettingsChanged, saveSettings } from '../shared/settings.ts';
 import { hostOf } from '../shared/sites.ts';
+import { performAction, startAutomations, stopAutomationOfTab } from './automations/scheduler.ts';
 import { BridgeConnection } from './connection.ts';
 import { detachDebugger, setupDebugger } from './debugger/index.ts';
 import { handlers } from './handlers/index.ts';
@@ -50,6 +53,9 @@ async function configure(): Promise<void> {
     onRequest: router.dispatch,
     // No server, no reason to keep the debugger's warning bar on screen.
     onDisconnect: detachDebugger,
+    onWelcome: ({ launch }) => {
+      if (launch) void saveLaunch(launch);
+    },
   });
   connection.start();
 }
@@ -57,11 +63,16 @@ async function configure(): Promise<void> {
 /** Runs each time the background wakes up; all listeners must be added synchronously. */
 export function startBackground(): void {
   setupDebugger();
+  startAutomations();
   let configured = configure();
 
   // Having these listeners is what makes the browser start the background at launch.
   browser.runtime.onStartup.addListener(() => {});
-  browser.runtime.onInstalled.addListener(() => {});
+  browser.runtime.onInstalled.addListener(({ reason }) => {
+    // A new user has an extension and nothing to connect it to: show them the one step left.
+    if (reason === 'install')
+      void browser.tabs.create({ url: browser.runtime.getURL('/setup.html') });
+  });
 
   // While the server is down nothing keeps the background alive, so the in-memory
   // backoff dies with it. The alarm wakes it up to try again.
@@ -82,9 +93,27 @@ export function startBackground(): void {
       return;
     }
     if (isStopRequest(message)) {
-      // Stop means stop: switch the bridge off until the user turns it back on in the popup.
-      void saveSettings({ enabled: false });
+      // On an automation's tab, Stop pauses that automation. Anywhere else it switches
+      // the bridge off until the user turns it back on in the popup.
+      const tabId = sender.tab?.id;
+      void (tabId === undefined ? Promise.resolve(false) : stopAutomationOfTab(tabId)).then(
+        (wasAutomation) => {
+          if (!wasAutomation) void saveSettings({ enabled: false });
+        },
+      );
       return;
+    }
+    if (isAutomationAction(message)) {
+      // Approving is the user's alone: only the extension's own pages may ask for it,
+      // never a script in a web page.
+      if (!sender.url?.startsWith(browser.runtime.getURL(''))) return;
+      const done = (result: AutomationActionResult) => sendResponse(result);
+      performAction(message).then(
+        () => done({ ok: true }),
+        (error) =>
+          done({ ok: false, error: error instanceof Error ? error.message : String(error) }),
+      );
+      return true;
     }
     if (!isStatusRequest(message)) return;
     const reply = () => sendResponse((connection?.status ?? null) satisfies StatusResponse);

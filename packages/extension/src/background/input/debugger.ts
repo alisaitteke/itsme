@@ -62,7 +62,7 @@ export function createDebuggerInput(deps: DebuggerInputDeps): InputDriver {
   return {
     async click(tabId, target, options) {
       await showTab(tabId);
-      const point = await agent(tabId, { kind: 'locate', target, scroll: true });
+      const point = await agent(tabId, { kind: 'locate', target, scroll: true, why: 'click' });
       // A pointer would land on whatever covers the element, so click it directly instead.
       if (!point.hittable || !(await attached(tabId))) {
         return fallback.click(tabId, target, options);
@@ -80,16 +80,16 @@ export function createDebuggerInput(deps: DebuggerInputDeps): InputDriver {
 
     async hover(tabId, target) {
       await showTab(tabId);
-      const { x, y } = await agent(tabId, { kind: 'locate', target, scroll: true });
+      const { x, y } = await agent(tabId, { kind: 'locate', target, scroll: true, why: 'hover' });
       if (!(await attached(tabId))) return fallback.hover(tabId, target);
       await mouse(tabId, 'mouseMoved', { x, y });
     },
 
     async drag(tabId, from, to) {
       await showTab(tabId);
-      const start = await agent(tabId, { kind: 'locate', target: from, scroll: true });
+      const start = await agent(tabId, { kind: 'locate', target: from, scroll: true, why: 'drag' });
       // Scrolling again for the drop target would move the start point.
-      const end = await agent(tabId, { kind: 'locate', target: to, scroll: false });
+      const end = await agent(tabId, { kind: 'locate', target: to, scroll: false, why: 'drag' });
       if (!start.inViewport || !end.inViewport) {
         throw new BridgeError(
           'INVALID_PARAMS',

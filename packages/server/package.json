@@ -1,31 +1,49 @@
 {
-  "name": "@itsme/server",
+  "name": "itsme-mcp",
   "version": "0.1.0",
-  "description": "MCP server that drives a browser through the itsme extension",
+  "description": "MCP server that lets an AI client drive your own browser through the itsme extension",
+  "keywords": [
+    "mcp",
+    "model-context-protocol",
+    "browser",
+    "automation",
+    "chrome-extension"
+  ],
+  "homepage": "https://github.com/alisaitteke/itsme#readme",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/alisaitteke/itsme.git",
+    "directory": "packages/server"
+  },
+  "bugs": "https://github.com/alisaitteke/itsme/issues",
   "type": "module",
   "bin": {
-    "itsme": "./dist/cli.mjs"
+    "itsme-mcp": "./dist/cli.mjs"
   },
   "files": [
-    "dist"
+    "dist/cli.mjs"
   ],
   "engines": {
-    "node": ">=22"
+    "node": ">=20"
+  },
+  "publishConfig": {
+    "access": "public"
   },
   "scripts": {
     "build": "tsdown",
     "dev": "tsdown --watch",
-    "typecheck": "tsc -p . --pretty false"
-  },
-  "dependencies": {
-    "@modelcontextprotocol/server": "^2.4.0",
-    "ws": "^8.23.0",
-    "zod": "^4.6.7"
+    "bundle": "tsdown && node scripts/make-mcpb.mjs",
+    "typecheck": "tsc -p . --pretty false",
+    "prepublishOnly": "tsdown"
   },
   "devDependencies": {
-    "@modelcontextprotocol/client": "^2.4.0",
+    "@anthropic-ai/mcpb": "^2.1.2",
     "@itsme/protocol": "workspace:*",
+    "@modelcontextprotocol/client": "^2.4.0",
+    "@modelcontextprotocol/server": "^2.4.0",
     "@types/ws": "^8.18.2",
-    "tsdown": "^0.23.7"
+    "tsdown": "^0.23.7",
+    "ws": "^8.23.0",
+    "zod": "^4.6.7"
   }
 }
