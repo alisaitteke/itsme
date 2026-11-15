@@ -58,7 +58,7 @@ export const ripple: EffectDef = {
           boost = Math.min(boost, 1);
           const radius = (0.6 + 3.1 * base) * (1 + 1.3 * boost);
           const alpha = Math.min(1, base * (0.34 + 0.4 * idle) + boost * Math.sqrt(base) * 0.85);
-          ctx.fillStyle = `hsl(${222 - 36 * boost} 95% ${lightness + 10 * boost}% / ${alpha})`;
+          ctx.fillStyle = `hsl(${160 + 10 * boost} 82% ${lightness + 10 * boost}% / ${alpha})`;
           ctx.beginPath();
           ctx.arc(x, y, radius, 0, Math.PI * 2);
           ctx.fill();

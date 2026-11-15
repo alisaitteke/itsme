@@ -1,0 +1,76 @@
+html,
+body {
+  height: 100%;
+  overflow: hidden;
+  background: var(--sheet);
+}
+
+.site {
+  display: grid;
+  gap: 16px;
+  justify-items: start;
+  max-width: 560px;
+  padding: 84px 0 0 120px;
+}
+
+.heading {
+  margin-bottom: 6px;
+  font-size: 30px;
+  font-weight: 760;
+  letter-spacing: -0.02em;
+  color: var(--ink);
+}
+
+.bar {
+  width: 100%;
+  height: 12px;
+  background: var(--sunken);
+  border-radius: 6px;
+}
+
+.bar.short {
+  width: 62%;
+}
+
+.controls {
+  display: flex;
+  gap: 10px;
+  margin: 8px 0;
+}
+
+.box,
+.press {
+  display: inline-flex;
+  align-items: center;
+  height: 42px;
+  padding: 0 16px;
+  border: 1px solid var(--line-strong);
+  border-radius: 8px;
+}
+
+.box {
+  width: 250px;
+  color: var(--muted);
+}
+
+.press {
+  font-weight: 650;
+  color: var(--ink);
+  background: var(--sunken);
+}
+
+.link {
+  color: var(--muted);
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+
+/* The spot itsme just acted on. */
+[data-spot] {
+  transition: box-shadow 0.5s ease;
+}
+
+[data-spot].hit {
+  box-shadow: 0 0 0 4px color-mix(in srgb, var(--brand) 45%, transparent);
+  transition-duration: 0.08s;
+}

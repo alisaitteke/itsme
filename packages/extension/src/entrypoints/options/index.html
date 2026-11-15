@@ -2,84 +2,150 @@
 <html lang="en">
   <head>
     <meta charset="utf-8" />
-    <title>itsme settings</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="manifest.open_in_tab" content="true" />
+    <title>Settings · itsme</title>
     <link rel="stylesheet" href="../../ui/base.css" />
     <link rel="stylesheet" href="./style.css" />
   </head>
   <body>
-    <header>
-      <span id="dot" class="dot" data-state="disconnected"></span>
-      <div>
-        <h1>itsme settings</h1>
-        <p id="status" role="status">Checking…</p>
+    <main id="main" class="page">
+      <div class="intro">
+        <h1 class="title">Settings</h1>
       </div>
-    </header>
 
-    <form id="settings">
-      <fieldset>
-        <legend>Control</legend>
-        <label class="toggle">
-          <span>Allow the MCP server to control this browser</span>
-          <input id="enabled" type="checkbox" />
-        </label>
-        <label id="real-input-row" class="toggle" hidden>
-          <span>
-            Use the debugger
-            <small>
-              Real mouse and keyboard input, console and network. The browser shows a debugging bar
-              while it is in use.
-            </small>
-          </span>
-          <input id="real-input" type="checkbox" />
-        </label>
-        <label>
-          <span>Animation while itsme uses a tab</span>
-          <select id="indicator">
-            <option value="aurora">Aurora (soft glow)</option>
-            <option value="orbit">Orbit (light trails)</option>
-            <option value="viewfinder">Viewfinder (corner marks)</option>
-            <option value="ripple">Ripple (dots)</option>
-            <option value="none">Off (badge only)</option>
-          </select>
-        </label>
-      </fieldset>
-
-      <fieldset>
-        <legend>Sites</legend>
-        <label class="toggle">
-          <span>
-            Ask before using a new site
-            <small>A prompt appears on the page the first time.</small>
-          </span>
-          <input id="ask-sites" type="checkbox" />
-        </label>
-        <div>
-          <p class="label">Allowed</p>
-          <ul id="allowed"></ul>
+      <section aria-labelledby="control-title">
+        <h2 id="control-title">Control</h2>
+        <div class="sheet rows">
+          <label class="row">
+            <span class="words">
+              <span class="name">Let AI apps use this browser</span>
+              <span class="desc">Off stops everything at once, automations included.</span>
+            </span>
+            <input id="enabled" type="checkbox" class="switch" />
+          </label>
+          <label id="real-input-row" class="row" hidden>
+            <span class="words">
+              <span class="name">Real mouse and keyboard</span>
+              <span class="desc">
+                Clicks and typing reach a page the way yours do, and itsme can read its console
+                and network. The browser shows a debugging bar while this is in use.
+              </span>
+            </span>
+            <input id="real-input" type="checkbox" class="switch" />
+          </label>
         </div>
-        <label>
-          <span>Blocked, one per line</span>
-          <textarea id="blocked" rows="3" spellcheck="false" placeholder="bank.example"></textarea>
-        </label>
-      </fieldset>
+      </section>
 
-      <fieldset>
-        <legend>Connection</legend>
-        <label>
-          <span>Port</span>
-          <input id="port" type="number" min="1" max="65535" required />
-        </label>
-        <label>
-          <span>Token</span>
-          <input id="token" type="password" autocomplete="off" placeholder="Only if the server sets one" />
-        </label>
-      </fieldset>
+      <section aria-labelledby="indicator-title">
+        <h2 id="indicator-title">While itsme uses a tab</h2>
+        <p class="muted">
+          The page always shows a badge with a Stop button. Choose what moves around it; the
+          preview shows your choice on a made-up page, reacting as itsme clicks and types.
+        </p>
+        <div id="preview" class="preview">
+          <iframe src="/preview.html" title="Preview of the animation" tabindex="-1" inert></iframe>
+        </div>
+        <div
+          id="indicator"
+          class="choices"
+          role="radiogroup"
+          aria-labelledby="indicator-title"
+        ></div>
+      </section>
 
-      <div class="save">
-        <button type="submit">Save</button>
-        <span id="saved" class="hint" role="status"></span>
-      </div>
-    </form>
+      <section aria-labelledby="sites-title">
+        <h2 id="sites-title">Sites</h2>
+        <div class="sheet rows">
+          <label class="row">
+            <span class="words">
+              <span class="name">Ask before using a new site</span>
+              <span class="desc">
+                The page asks you the first time. Off lets itsme use any site that isn’t blocked.
+              </span>
+            </span>
+            <input id="ask-sites" type="checkbox" class="switch" />
+          </label>
+        </div>
+
+        <div class="site-lists">
+          <div class="sheet sites">
+            <h3>Allowed</h3>
+            <p class="muted small">Sites you said yes to.</p>
+            <ul id="allowed"></ul>
+            <form id="allow-form" class="add" novalidate>
+              <label class="visually-hidden" for="allow-input">Site to allow</label>
+              <input
+                id="allow-input"
+                class="input"
+                name="site"
+                autocomplete="off"
+                spellcheck="false"
+                placeholder="example.com"
+              />
+              <button type="submit" class="button quiet compact">Allow</button>
+            </form>
+            <p class="site-error small" role="alert" hidden></p>
+          </div>
+
+          <div class="sheet sites">
+            <h3>Blocked</h3>
+            <p class="muted small">Never used, whatever else is set.</p>
+            <ul id="blocked"></ul>
+            <form id="block-form" class="add" novalidate>
+              <label class="visually-hidden" for="block-input">Site to block</label>
+              <input
+                id="block-input"
+                class="input"
+                name="site"
+                autocomplete="off"
+                spellcheck="false"
+                placeholder="bank.example"
+              />
+              <button type="submit" class="button quiet compact">Block</button>
+            </form>
+            <p class="site-error small" role="alert" hidden></p>
+          </div>
+        </div>
+      </section>
+
+      <section aria-labelledby="connection-title">
+        <h2 id="connection-title">Connection</h2>
+        <p class="muted">
+          How the extension finds itsme on this computer. Leave these alone unless you changed them
+          on the other side too, and after a change add itsme to your AI app again from
+          <a href="/setup.html">Connect</a>.
+        </p>
+        <form id="connection" class="sheet connection">
+          <label class="field port">
+            <span>Port</span>
+            <input
+              id="port"
+              class="input"
+              type="number"
+              inputmode="numeric"
+              min="1"
+              max="65535"
+              required
+            />
+          </label>
+          <label class="field">
+            <span>Token</span>
+            <input
+              id="token"
+              class="input"
+              type="password"
+              autocomplete="off"
+              spellcheck="false"
+              placeholder="None"
+            />
+          </label>
+          <button type="submit" class="button">Save connection</button>
+        </form>
+      </section>
+    </main>
+
+    <p id="saved" class="toast" role="status" aria-live="polite"></p>
 
     <script type="module" src="./main.ts"></script>
   </body>

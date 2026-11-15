@@ -380,7 +380,8 @@ try {
     `(() => {
       const text = (id) => document.getElementById(id).textContent.trim();
       return {
-        status: text('status'), share: text('share'), add: text('add'), power: text('power'),
+        status: text('status'), share: text('share'), add: text('add'),
+        on: document.getElementById('power').checked, power: text('power-name'),
         settingsInPopup: document.getElementById('port') !== null,
       };
     })()`,
@@ -389,8 +390,9 @@ try {
     'the popup shows the connection and its actions',
     popup.status.startsWith('Connected') &&
       popup.share === 'Share this tab' &&
-      popup.add === 'Add to an AI app' &&
-      popup.power === 'Turn off',
+      popup.add === 'Connect an AI app' &&
+      popup.on &&
+      popup.power === 'itsme is on',
     JSON.stringify(popup),
   );
   check('the popup holds no settings', popup.settingsInPopup === false);
@@ -444,13 +446,17 @@ try {
     'options.html',
     `(async () => {
       const value = (id) => document.getElementById(id).value;
-      const before = { port: value('port'), indicator: value('indicator'), enabled: document.getElementById('enabled').checked };
-      const select = document.getElementById('indicator');
-      select.value = 'orbit';
-      select.dispatchEvent(new Event('change'));
+      const picked = () => document.querySelector('input[name="indicator"]:checked').value;
+      const before = { port: value('port'), indicator: picked(), enabled: document.getElementById('enabled').checked };
+      document.querySelector('input[name="indicator"][value="orbit"]').click();
       await new Promise((done) => setTimeout(done, 400));
       const { settings } = await chrome.storage.local.get('settings');
-      return { ...before, saved: settings.indicator, note: document.getElementById('saved').textContent };
+      // The overlay is one more element next to the preview page's head and body.
+      const preview = document.querySelector('#preview iframe').contentDocument.documentElement;
+      return {
+        ...before, saved: settings.indicator, note: document.getElementById('saved').textContent,
+        preview: preview.children.length,
+      };
     })()`,
   );
   check(
@@ -462,6 +468,7 @@ try {
       options.note === 'Saved',
     JSON.stringify(options),
   );
+  check('the options page previews the animation', options.preview === 3, String(options.preview));
   await updateSettings({ indicator: 'aurora' });
 
   // --- tabs and the itsme group ---

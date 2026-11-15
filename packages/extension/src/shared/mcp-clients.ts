@@ -4,13 +4,16 @@ const SERVER_NAME = 'itsme';
 const NPM_PACKAGE = 'itsme-mcp';
 const BUNDLE_URL = 'https://github.com/alisaitteke/itsme/releases/latest/download/itsme.mcpb';
 
+const NEEDS_NODE = 'Needs Node.js on this computer';
+
 export const CLIENTS = [
-  { id: 'claude-desktop', label: 'Claude Desktop' },
-  { id: 'cursor', label: 'Cursor' },
-  { id: 'vscode', label: 'VS Code' },
-  { id: 'claude-code', label: 'Claude Code' },
-  { id: 'codex', label: 'Codex' },
-  { id: 'other', label: 'Another client' },
+  // Claude Desktop brings its own Node, so its bundle is the one route with nothing to install.
+  { id: 'claude-desktop', label: 'Claude Desktop', note: 'Nothing else to install' },
+  { id: 'cursor', label: 'Cursor', note: NEEDS_NODE },
+  { id: 'vscode', label: 'VS Code', note: NEEDS_NODE },
+  { id: 'claude-code', label: 'Claude Code', note: NEEDS_NODE },
+  { id: 'codex', label: 'Codex', note: NEEDS_NODE },
+  { id: 'other', label: 'Another app', note: NEEDS_NODE },
 ] as const;
 export type ClientId = (typeof CLIENTS)[number]['id'];
 
@@ -140,22 +143,21 @@ export function quickActionFor(client: ClientId, entry: ServerEntry): QuickActio
         kind: 'open',
         label: 'Download',
         url: BUNDLE_URL,
-        // Claude Desktop brings its own Node, so this is the one route that needs nothing else.
-        next: 'Open the downloaded itsme.mcpb and press Install. Nothing else to set up.',
+        next: 'Open the downloaded itsme.mcpb and press Install, then restart Claude Desktop.',
       };
     case 'cursor':
       return {
         kind: 'open',
         label: 'Add to Cursor',
         url: cursorLink(entry),
-        next: 'Cursor opens and asks you to confirm. It needs Node.js on this computer.',
+        next: 'Cursor opens and asks you to confirm.',
       };
     case 'vscode':
       return {
         kind: 'open',
         label: 'Add to VS Code',
         url: vscodeLink(entry),
-        next: 'VS Code opens with the server ready to review. It needs Node.js on this computer.',
+        next: 'VS Code opens with itsme ready to review and add.',
       };
     case 'claude-code':
     case 'codex':
@@ -163,14 +165,14 @@ export function quickActionFor(client: ClientId, entry: ServerEntry): QuickActio
         kind: 'copy',
         label: 'Copy command',
         text: snippetFor(client, entry).text,
-        next: 'Copied. Paste it in a terminal and press Enter. It needs Node.js on this computer.',
+        next: 'Copied. Paste it in a terminal and press Enter.',
       };
     case 'other':
       return {
         kind: 'copy',
         label: 'Copy entry',
         text: snippetFor(client, entry).text,
-        next: "Copied. Paste it into the client's MCP settings. It needs Node.js on this computer.",
+        next: 'Copied. Paste it into the app’s MCP settings.',
       };
   }
 }

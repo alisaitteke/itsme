@@ -1,40 +1,57 @@
 import { browser } from 'wxt/browser';
+import { BRAND, markSvg } from '../shared/brand.ts';
 import type { SiteDecision } from '../shared/runtime-messages.ts';
 
 const MARKUP = `
 <style>
   .card {
     box-sizing: border-box;
-    width: 300px;
-    padding: 14px;
-    font: 13px/1.4 system-ui, sans-serif;
-    color: #111827;
+    width: 340px;
+    max-width: calc(100vw - 28px);
+    padding: 18px;
+    font: 15px/1.45 system-ui, sans-serif;
+    color: #14281f;
     background: #ffffff;
-    border: 1px solid #d1d5db;
-    border-radius: 10px;
-    box-shadow: 0 8px 24px rgb(0 0 0 / 0.2);
+    border: 1px solid #b0c6bc;
+    border-radius: 14px;
+    box-shadow: 0 12px 34px rgb(12 42 33 / 0.26);
   }
-  strong { font-size: 14px; }
-  p { margin: 6px 0 0; }
-  .host { font-weight: 600; overflow-wrap: anywhere; }
-  .row { display: flex; gap: 8px; margin-top: 12px; }
+  .brand {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 17px;
+    font-weight: 800;
+    letter-spacing: -0.03em;
+    color: ${BRAND.ink};
+  }
+  p { margin: 12px 0 0; }
+  .host {
+    margin-top: 2px;
+    font-size: 19px;
+    font-weight: 700;
+    color: ${BRAND.ink};
+    overflow-wrap: anywhere;
+  }
+  .row { display: flex; gap: 8px; margin-top: 16px; }
   button {
     flex: 1;
-    padding: 7px;
+    min-height: 40px;
     font: inherit;
-    font-weight: 600;
-    border-radius: 6px;
+    font-weight: 650;
+    border-radius: 10px;
     cursor: pointer;
   }
-  #itsme-allow { color: #ffffff; background: #2563eb; border: 0; }
-  #itsme-deny { color: #111827; background: transparent; border: 1px solid #d1d5db; }
+  button:focus-visible { outline: 2px solid ${BRAND.ink}; outline-offset: 2px; }
+  #itsme-allow { color: #ffffff; background: ${BRAND.greenSolid}; border: 0; }
+  #itsme-deny { color: ${BRAND.ink}; background: transparent; border: 1px solid #b0c6bc; }
 </style>
 <div class="card" role="dialog" aria-label="itsme">
-  <strong>itsme</strong>
-  <p>An MCP client wants to read and control pages on</p>
+  <div class="brand" translate="no">${markSvg(24)}itsme</div>
+  <p>Your AI app wants to read and control pages on</p>
   <p class="host"></p>
   <div class="row">
-    <button id="itsme-allow" type="button">Allow</button>
+    <button id="itsme-allow" type="button">Allow this site</button>
     <button id="itsme-deny" type="button">Not now</button>
   </div>
 </div>`;
@@ -47,7 +64,7 @@ export function showSitePrompt(host: string): void {
 
   const container = document.createElement('div');
   container.style.cssText =
-    'all: initial; position: fixed; top: 12px; right: 12px; z-index: 2147483647;';
+    'all: initial; position: fixed; top: 14px; right: 14px; z-index: 2147483647;';
   // Closed, so the page's own scripts can't reach the buttons.
   const root = container.attachShadow({ mode: 'closed' });
   root.innerHTML = MARKUP;

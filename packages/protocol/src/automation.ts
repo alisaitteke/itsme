@@ -127,8 +127,16 @@ export function describeSchedule(schedule: Schedule): string {
     if (seconds >= 60 && seconds % 60 === 0) return `Every ${seconds / 60} min`;
     return `Every ${seconds} s`;
   }
-  const days = schedule.days && schedule.days.length < 7 ? schedule.days.join(', ') : 'day';
-  return `Every ${days} at ${schedule.at}`;
+  return `Every ${describeDays(schedule.days)} at ${schedule.at}`;
+}
+
+const WORKDAYS: readonly Weekday[] = ['mon', 'tue', 'wed', 'thu', 'fri'];
+
+function describeDays(days: readonly Weekday[] | undefined): string {
+  const chosen = new Set(days);
+  if (!days || chosen.size === 7) return 'day';
+  if (chosen.size === 5 && WORKDAYS.every((day) => chosen.has(day))) return 'weekday';
+  return days.map((day) => day.charAt(0).toUpperCase() + day.slice(1)).join(', ');
 }
 
 /** The sites an automation touches: its page and every page a step opens. */

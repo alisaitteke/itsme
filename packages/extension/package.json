@@ -11,9 +11,11 @@
     "build:firefox": "wxt build -b firefox --mv3",
     "zip": "wxt zip",
     "zip:firefox": "wxt zip -b firefox --mv3",
-    "typecheck": "tsc -p . --pretty false"
+    "typecheck": "tsc -p . --pretty false",
+    "icons": "node scripts/make-icons.mjs"
   },
   "dependencies": {
+    "@fontsource-variable/figtree": "^5.2.0",
     "@itsme/protocol": "workspace:*",
     "zod": "^4.6.7"
   },

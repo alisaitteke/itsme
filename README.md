@@ -23,7 +23,7 @@ Open `chrome://extensions`, turn on Developer mode, choose "Load unpacked" and p
 
 ### 2. The AI app
 
-The extension opens a setup page when it is first installed, with one action per app. "Add to an AI app" in the popup opens it again.
+The extension opens a setup page when it is first installed, with one action per app. "Connect an AI app" in the popup opens it again.
 
 | App             | What to do                                                                                                                       | Needs Node.js |
 | --------------- | -------------------------------------------------------------------------------------------------------------------------------- | ------------- |
@@ -44,7 +44,7 @@ The extension opens a setup page when it is first installed, with one action per
 
 To run a build from this checkout instead of the published package, use `node /absolute/path/to/itsme/packages/server/dist/cli.mjs` as the command. Once the browser is connected to such a build, the setup page offers that path by itself.
 
-The popup shows whether the browser is connected and holds the actions: share the current tab, add itsme to an app, turn it off. Everything else is on the extension's options page: the debugger option, the animation, allowed and blocked sites, port and token.
+The popup shows whether the browser is connected and holds the actions: share the current tab, open the Automations, Connect and Settings pages, switch itsme off. Everything else is on the Settings page, which is the extension's options page: the debugger option, the animation, allowed and blocked sites, port and token.
 
 ## Tools
 
@@ -104,15 +104,15 @@ Firefox has no tab group API, so there the extension keeps its own list of share
 
 ## Indicator
 
-While itsme reads or drives a tab, the page shows an animation around its edges and a badge with a Stop button. Both go away four seconds after the last action. Pick the animation on the options page:
+While itsme reads or drives a tab, the page shows an animation around its edges and a badge with a Stop button. Both go away four seconds after the last action. Pick the animation on the Settings page, which plays the chosen one on a made-up page:
 
-| Style            | What you see                                           | When itsme acts                                                     |
-| ---------------- | ------------------------------------------------------ | ------------------------------------------------------------------- |
-| Aurora (default) | A band of blue, violet and cyan light around the edges | The frame flashes                                                   |
-| Orbit            | Two light trails circling the frame                    | A third trail does a lap, starting from the side nearest the action |
-| Viewfinder       | Corner marks and a label saying what itsme is doing    | A reticle lands on the spot                                         |
-| Ripple           | A frame of dots                                        | A ripple spreads from the spot and swells the dots it passes        |
-| Off              | Only the badge                                         |                                                                     |
+| Style            | What you see                                        | When itsme acts                                                     |
+| ---------------- | --------------------------------------------------- | ------------------------------------------------------------------- |
+| Aurora (default) | A band of green and mint light around the edges     | The frame flashes                                                   |
+| Orbit            | Two light trails circling the frame                 | A third trail does a lap, starting from the side nearest the action |
+| Viewfinder       | Corner marks and a label saying what itsme is doing | A reticle lands on the spot                                         |
+| Ripple           | A frame of dots                                     | A ripple spreads from the spot and swells the dots it passes        |
+| None             | Only the badge                                      |                                                                     |
 
 The overlay never takes a click; only Stop does. It is left out of `page_screenshot`, and with "reduce motion" set in the system it shows a still frame.
 
@@ -137,7 +137,7 @@ An automation is a page, a schedule and a list of steps. The AI app saves it; fr
 - **Approval:** a new automation waits until you approve it on the Automations page, which the popup opens. The toolbar button shows a count while one is waiting. No tool can approve one or turn one back on.
 - **Sites:** it works only on the sites of its own URLs. A click that leads anywhere else fails the run. Blocked sites stay blocked.
 - **Tabs:** each automation has a tab of its own, opened in the background in a tab group named "itsme automations", which the MCP tools can't reach. A daily one opens its tab for the run and closes it afterwards; after a failed run the tab stays so you can look at the page.
-- **Stopping:** Stop on the automation's page, Pause on the Automations page, or closing the tab of a repeating one. "Turn off" in the popup stops all of them.
+- **Stopping:** Stop on the automation's page, Pause on the Automations page, or closing the tab of a repeating one. The switch in the popup stops all of them.
 - **Failures:** an element that doesn't show up within 10 seconds fails the run (within the interval, for one that repeats faster than that). Three failed runs in a row pause the automation, and the toolbar button says so.
 - **Missed runs:** if the browser was closed at the time of a daily automation, it runs when the browser is opened later the same day.
 
@@ -163,14 +163,14 @@ A site has to be allowed before its pages are read or driven. The first time a t
 - "Not now" fails that call with `SITE_NOT_ALLOWED`; the next call asks again.
 - Sharing a tab from the popup allows its site.
 
-The options page lists the allowed sites and takes a list of blocked ones, which are refused whatever else is set, navigation included. Turn "Ask before using a new site" off there to allow every site that isn't blocked.
+The Settings page lists the allowed and the blocked sites; blocked ones are refused whatever else is set, navigation included. Turn "Ask before using a new site" off there to allow every site that isn't blocked.
 
 ## Debugger
 
 On Chromium the extension uses `chrome.debugger` for three things: real mouse and keyboard input, so pages see trusted events and a user gesture; the console; and network recording. While a tab is attached the browser shows a "started debugging this browser" bar.
 
 - The debugger attaches on the first pointer, keyboard, console or network call in a tab. It detaches when the server disconnects, or after two minutes without use (ten while a tab is being recorded).
-- Pressing Cancel on the bar turns the option off. Turn it back on in the options page.
+- Pressing Cancel on the bar turns the option off. Turn it back on in the Settings page.
 - For input, the tab is made the visible one in its window first; a hidden tab doesn't answer input.
 - Scripted DOM events are used instead when the option is off, in Firefox, when the debugger can't attach, when something covers the element, for `<select>` elements and for clearing a field to empty. `page_drag`, `page_console` and `page_network` have no scripted version and answer `UNSUPPORTED`.
 - `page_console` returns what the page logged before the recording started as well. `page_network` only has requests made after its first call on a tab, so call it once and then reload to capture a page load.
@@ -223,7 +223,9 @@ packages/
       site-access.ts    allowed and blocked sites, the wait for the prompt
     src/agent/        content script: outline, find, geometry, scripted actions, site prompt, indicator
       effects/          the indicator's animations, one file each
-    src/entrypoints/  background, agent content script, popup, options, setup and automations pages
+    src/entrypoints/  background, agent content script, popup, options, setup and automations pages, the animation preview
+    src/ui/           what the pages share: styles, top bar, status
+    brand/, scripts/  the mark and the script that draws the icons from it (`pnpm --filter @itsme/extension icons`)
 tests/
   integration/   MCP client through to the extension's connection and router, in Node
   e2e/           the same path in a real Chromium

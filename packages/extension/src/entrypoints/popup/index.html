@@ -8,24 +8,34 @@
   </head>
   <body>
     <header>
-      <span id="dot" class="dot" data-state="disconnected"></span>
-      <div>
-        <h1>itsme</h1>
-        <p id="status" role="status">Checking…</p>
-      </div>
+      <span class="brand" translate="no"><span id="mark"></span>itsme</span>
+      <span id="status" class="status" role="status">Checking…</span>
     </header>
 
-    <div class="actions">
-      <button id="share" type="button" disabled>Share this tab</button>
-      <small>itsme only sees the tabs in its own tab groups.</small>
-      <button id="add" type="button" class="secondary">Add to an AI app</button>
-      <button id="automations" type="button" class="secondary">Automations</button>
-    </div>
+    <p id="help" class="notice" hidden></p>
 
-    <footer>
-      <button id="power" type="button" class="link"></button>
-      <button id="settings" type="button" class="link">Settings</button>
-    </footer>
+    <section class="tab" aria-labelledby="site">
+      <h1 id="site">This tab</h1>
+      <p id="tab-note" class="muted"></p>
+      <button id="share" type="button" class="button wide" disabled>Share this tab</button>
+    </section>
+
+    <nav class="links" aria-label="More">
+      <a id="automations" href="/automations.html" target="_blank">
+        <span>Automations</span>
+        <span id="review" class="count" hidden></span>
+      </a>
+      <a id="add" href="/setup.html" target="_blank"><span>Connect an AI app</span></a>
+      <a id="settings" href="/options.html" target="_blank"><span>Settings</span></a>
+    </nav>
+
+    <label class="row power">
+      <span class="words">
+        <span id="power-name" class="name">itsme is on</span>
+        <span id="power-desc" class="desc">Your AI apps can use this browser.</span>
+      </span>
+      <input id="power" type="checkbox" class="switch" />
+    </label>
 
     <script type="module" src="./main.ts"></script>
   </body>

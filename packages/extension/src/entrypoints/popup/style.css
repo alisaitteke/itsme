@@ -1,20 +1,82 @@
 body {
-  width: 280px;
+  width: 360px;
+  font-size: 15.5px;
 }
 
-.actions {
-  display: grid;
-  gap: 8px;
-}
-
-.actions small {
-  margin: -4px 0 4px;
-}
-
-footer {
+header {
   display: flex;
+  align-items: center;
   justify-content: space-between;
-  margin-top: 14px;
-  padding-top: 10px;
-  border-top: 1px solid var(--border);
+  gap: 12px;
+  padding: 16px 18px 14px;
+}
+
+#help {
+  margin: 0 18px 14px;
+  font-size: 14.5px;
+}
+
+/* The tab in front of the user is what the popup is about, so it gets the room. */
+.tab {
+  display: grid;
+  gap: 4px;
+  margin: 0 18px;
+  padding: 16px;
+  background: var(--sheet);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-lg);
+}
+
+.tab h1 {
+  font-size: 19px;
+  font-weight: 720;
+  letter-spacing: -0.015em;
+  overflow-wrap: anywhere;
+}
+
+.tab .button {
+  margin-top: 12px;
+}
+
+.links {
+  display: grid;
+  margin: 10px 8px 4px;
+}
+
+.links a {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-height: 44px;
+  padding: 0 10px;
+  font-weight: 600;
+  color: var(--ink);
+  text-decoration: none;
+  border-radius: 8px;
+}
+
+.links a:hover {
+  background: var(--sunken);
+}
+
+/* The chevron says "this goes somewhere"; it is drawn, so no reader reads it out. */
+.links a::after {
+  content: "";
+  width: 7px;
+  height: 7px;
+  margin-left: auto;
+  border-top: 2px solid var(--line-strong);
+  border-right: 2px solid var(--line-strong);
+  transform: rotate(45deg);
+}
+
+.links .count {
+  margin-left: 2px;
+}
+
+.power {
+  margin-top: 4px;
+  padding: 14px 18px 16px;
+  border-top: 1px solid var(--line);
+  cursor: pointer;
 }

@@ -1,0 +1,27 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <title>Animation preview · itsme</title>
+    <link rel="stylesheet" href="../../ui/base.css" />
+    <link rel="stylesheet" href="./style.css" />
+  </head>
+  <body>
+    <!-- A stand-in for any website, for the Settings page to show the real overlay on. -->
+    <div class="site" aria-hidden="true">
+      <p class="heading">Any website</p>
+      <div class="bar"></div>
+      <div class="bar"></div>
+      <div class="bar short"></div>
+      <div class="controls">
+        <span class="box" data-spot="type">Search…</span>
+        <span class="press" data-spot="click">Search</span>
+      </div>
+      <div class="bar"></div>
+      <div class="bar short"></div>
+      <span class="link" data-spot="click">Next page</span>
+    </div>
+
+    <script type="module" src="./main.ts"></script>
+  </body>
+</html>

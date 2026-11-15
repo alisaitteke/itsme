@@ -1,115 +1,169 @@
-body {
-  padding: 32px 16px 48px;
-  font-size: 14px;
-}
-
-main {
-  max-width: 640px;
-  margin: 0 auto;
-  display: grid;
-  gap: 16px;
-}
-
-h1 {
-  font-size: 24px;
-}
-
-h2 {
-  margin: 0;
-  font-size: 16px;
-  overflow-wrap: anywhere;
-}
-
-p {
-  margin: 0;
-}
-
-.lede {
-  margin-top: -8px;
-  color: var(--muted);
-}
-
-.notice {
-  padding: 10px 12px;
-  background: var(--sunken);
-  border-radius: 8px;
-}
-
 #list {
   display: grid;
-  gap: 14px;
-  margin: 0;
+  gap: 20px;
   padding: 0;
   list-style: none;
+}
+
+#list:empty {
+  display: none;
+}
+
+.banner {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px 16px;
 }
 
 .card {
   display: grid;
-  gap: 10px;
-  padding: 14px;
-  border: 1px solid var(--border);
-  border-radius: 10px;
+  gap: 18px;
+  padding: 22px 24px;
 }
 
+/* One that waits for an answer stands out from the ones already settled. */
 .card[data-status="pending"] {
-  border-color: #d97706;
+  border-color: var(--dot-warn);
+  box-shadow: 0 0 0 3px var(--warn-soft);
 }
 
-.head {
+.card .head {
   display: flex;
+  flex-wrap: wrap;
+  align-items: center;
   justify-content: space-between;
-  align-items: baseline;
-  gap: 12px;
+  gap: 8px 16px;
 }
 
-.badge {
-  flex: none;
-  padding: 2px 8px;
-  font-size: 12px;
-  font-weight: 600;
-  color: #ffffff;
-  background: #6b7280;
-  border-radius: 999px;
-}
-
-.badge[data-status="on"] {
-  background: #15803d;
-}
-
-.badge[data-status="pending"] {
-  background: #b45309;
-}
-
-.meta {
-  color: var(--muted);
+.card h2 {
+  min-width: 0;
   overflow-wrap: anywhere;
 }
 
-ol {
+.facts {
+  display: grid;
+  grid-template-columns: max-content 1fr;
+  gap: 10px 20px;
   margin: 0;
-  padding-left: 22px;
 }
 
-.history {
-  margin: 0;
-  padding: 0;
-  list-style: none;
-  font-size: 13px;
+.facts dt {
   color: var(--muted);
 }
 
-.history .failed {
-  color: #b91c1c;
+.facts dd {
+  min-width: 0;
+  margin: 0;
+  color: var(--ink);
+  overflow-wrap: anywhere;
 }
 
-@media (prefers-color-scheme: dark) {
-  .history .failed {
-    color: #fca5a5;
+.facts ol {
+  display: grid;
+  gap: 4px;
+  padding-left: 1.15em;
+}
+
+.facts ol li::marker {
+  color: var(--muted);
+  font-variant-numeric: tabular-nums;
+}
+
+@media (max-width: 520px) {
+  .facts {
+    grid-template-columns: 1fr;
+    gap: 2px;
+  }
+
+  .facts dd {
+    margin-bottom: 10px;
   }
 }
 
-.buttons {
+.runs {
+  display: grid;
+  gap: 6px;
+  padding: 0;
+  font-size: 14.5px;
+  font-variant-numeric: tabular-nums;
+  color: var(--muted);
+  list-style: none;
+}
+
+.runs li {
+  display: grid;
+  grid-template-columns: 8px max-content 1fr;
+  align-items: baseline;
+  gap: 0 10px;
+}
+
+@media (max-width: 520px) {
+  .runs li {
+    grid-template-columns: 8px 1fr;
+  }
+
+  .runs li span + span {
+    grid-column: 2;
+  }
+}
+
+.runs li::before {
+  content: "";
+  width: 8px;
+  height: 8px;
+  background: var(--dot-ok);
+  border-radius: 50%;
+}
+
+.runs li.failed {
+  color: var(--danger);
+}
+
+.runs li.failed::before {
+  background: var(--dot-danger);
+}
+
+.card .foot {
   display: flex;
   flex-wrap: wrap;
-  gap: 8px;
+  align-items: center;
+  gap: 10px;
+  padding-top: 18px;
+  border-top: 1px solid var(--line);
+}
+
+.card .foot .ask {
+  flex: 1 1 100%;
+  font-weight: 650;
+  color: var(--ink);
+}
+
+/* The user's own yes, kept on the card like a signature on a form. */
+.signed {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-left: auto;
+  font-size: 14.5px;
+  color: var(--muted);
+}
+
+.signed::before {
+  content: "";
+  width: 44px;
+  height: 12px;
+  background: var(--brand);
+  -webkit-mask:
+    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 44 12' preserveAspectRatio='none'%3E%3Cpath d='M2 9c5-9 8-9 9-2s6-1 9-4 5 1 4 4 5 2 18-3' fill='none' stroke='%23000' stroke-width='2' stroke-linecap='round'/%3E%3C/svg%3E")
+    no-repeat center / 100% 100%;
+  mask:
+    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 44 12' preserveAspectRatio='none'%3E%3Cpath d='M2 9c5-9 8-9 9-2s6-1 9-4 5 1 4 4 5 2 18-3' fill='none' stroke='%23000' stroke-width='2' stroke-linecap='round'/%3E%3C/svg%3E")
+    no-repeat center / 100% 100%;
+}
+
+.empty {
+  display: grid;
+  gap: 12px;
 }

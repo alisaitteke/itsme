@@ -3,27 +3,39 @@
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <title>itsme automations</title>
+    <title>Automations · itsme</title>
     <link rel="stylesheet" href="../../ui/base.css" />
     <link rel="stylesheet" href="./style.css" />
   </head>
   <body>
-    <main>
-      <h1>Automations</h1>
-      <p class="lede">
-        Steps an AI app saved for this browser to repeat by itself. Nothing here runs until you
-        approve it, and each one only works on the sites listed with it.
-      </p>
-      <p id="off" class="notice" hidden>
-        itsme is turned off, so no automation runs. Turn it on from the toolbar button.
-      </p>
-      <p id="error" class="notice" role="alert" hidden></p>
+    <main id="main" class="page">
+      <div class="intro">
+        <h1 class="title">Automations</h1>
+        <p class="lead">
+          Things itsme does by itself, on a schedule. Your AI app proposes them, and nothing runs
+          until you approve it here.
+        </p>
+      </div>
+
+      <div id="off" class="notice warn banner" hidden>
+        <span>itsme is off, so nothing here runs.</span>
+        <button id="turn-on" type="button" class="button quiet compact">Turn itsme on</button>
+      </div>
+      <p id="error" class="notice danger" role="alert" hidden></p>
+
       <ul id="list"></ul>
-      <p id="empty" class="hint" hidden>
-        None yet. Ask your AI app for one, for example: "Every morning at 9, open example.com and
-        press Check in."
-      </p>
+
+      <section id="empty" class="empty" hidden>
+        <h2>No automations yet</h2>
+        <p>Ask your AI app for one. For example:</p>
+        <div class="sheet example">
+          <p id="example">Every weekday at 9:00, open example.com/report and click “Refresh”.</p>
+          <button id="copy-example" type="button" class="button quiet compact">Copy</button>
+        </div>
+        <p class="muted">It shows up here first, with every step spelled out, for you to approve.</p>
+      </section>
     </main>
+
     <script type="module" src="./main.ts"></script>
   </body>
 </html>

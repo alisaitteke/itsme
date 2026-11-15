@@ -83,8 +83,11 @@ describe('descriptions', () => {
     expect(describeSchedule({ every: 'interval', seconds: 7200 })).toBe('Every 2 h');
     expect(describeSchedule({ every: 'day', at: '09:00' })).toBe('Every day at 09:00');
     expect(describeSchedule({ every: 'day', at: '09:00', days: ['mon', 'fri'] })).toBe(
-      'Every mon, fri at 09:00',
+      'Every Mon, Fri at 09:00',
     );
+    expect(
+      describeSchedule({ every: 'day', at: '09:00', days: ['mon', 'tue', 'wed', 'thu', 'fri'] }),
+    ).toBe('Every weekday at 09:00');
   });
 
   it('lists each site an automation touches once', () => {

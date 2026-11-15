@@ -1,81 +1,59 @@
-/* Shared by the popup and the options page. */
+/* The look every itsme page shares: paper, ink and one green, set in Figtree. */
+@import "@fontsource-variable/figtree/wght.css";
+@import "@fontsource-variable/figtree/wght-italic.css";
+
 :root {
   color-scheme: light dark;
-  --text: #111827;
-  --muted: #6b7280;
-  --border: #d1d5db;
-  --surface: #ffffff;
-  --sunken: #f3f4f6;
-  --accent: #2563eb;
-  font:
-    13px / 1.4 system-ui,
-    sans-serif;
+  --paper: #f4fbf8;
+  --sheet: #ffffff;
+  --sunken: #e7f2ed;
+  --ink: #0c2a21;
+  --text: #14281f;
+  --muted: #50645c;
+  --line: #d3e2db;
+  --line-strong: #b0c6bc;
+  --brand: #0b8a62;
+  --brand-solid: #0a7d59;
+  --brand-solid-hover: #086a4b;
+  --on-brand: #ffffff;
+  --brand-soft: #dcf2e8;
+  --brand-text: #0a6e4e;
+  --warn-soft: #fcefd3;
+  --warn-text: #7a4a00;
+  --danger: #b3261e;
+  --danger-soft: #fde8e6;
+  --dot-ok: #12a373;
+  --dot-warn: #d9931a;
+  --dot-off: #93a59e;
+  --dot-danger: #d0453c;
+  --radius: 10px;
+  --radius-lg: 14px;
+  --font: "Figtree Variable", system-ui, -apple-system, "Segoe UI", sans-serif;
+  --mono: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
 }
 
+/* Dark is neutral grey; green stays what it is in light: the accent. */
 @media (prefers-color-scheme: dark) {
   :root {
-    --text: #f3f4f6;
-    --muted: #9ca3af;
-    --border: #4b5563;
-    --surface: #1f2937;
-    --sunken: #111827;
-    --accent: #60a5fa;
+    --paper: #111212;
+    --sheet: #1c1d1d;
+    --sunken: #282a2a;
+    --ink: #f5f6f6;
+    --text: #e4e6e5;
+    --muted: #a3a8a6;
+    --line: #2f3231;
+    --line-strong: #4c504e;
+    --brand: #2cbf8c;
+    --brand-solid: #2cbf8c;
+    --brand-solid-hover: #52d3a6;
+    --on-brand: #06231a;
+    --brand-soft: #1d3129;
+    --brand-text: #63dab0;
+    --warn-soft: #33270d;
+    --warn-text: #f2c063;
+    --danger: #ff9a92;
+    --danger-soft: #3a1614;
   }
-}
-
-body {
-  margin: 0;
-  padding: 14px;
-  color: var(--text);
-  background: var(--surface);
-}
-
-header {
-  display: flex;
-  gap: 10px;
-  align-items: center;
-  margin-bottom: 14px;
-}
-
-h1 {
-  margin: 0;
-  font-size: 14px;
-}
-
-#status {
-  margin: 0;
-  color: var(--muted);
-}
-
-.dot {
-  flex: none;
-  width: 10px;
-  height: 10px;
-  border-radius: 50%;
-  background: #9ca3af;
-}
-
-.dot[data-state="connected"] {
-  background: #16a34a;
-}
-
-.dot[data-state="connecting"] {
-  background: #d97706;
-}
-
-.dot[data-state="disconnected"] {
-  background: #dc2626;
-}
-
-label {
-  display: grid;
-  gap: 4px;
-}
-
-label.toggle {
-  grid-template-columns: 1fr auto;
-  align-items: center;
-  gap: 10px;
 }
 
 [hidden] {
@@ -83,59 +61,449 @@ label.toggle {
   display: none !important;
 }
 
-small,
-.hint {
-  display: block;
+html {
+  background: var(--paper);
+}
+
+body {
   margin: 0;
+  color: var(--text);
+  background: var(--paper);
+  font: 16px / 1.5 var(--font);
+  -webkit-font-smoothing: antialiased;
+}
+
+h1,
+h2,
+h3 {
+  margin: 0;
+  color: var(--ink);
+  letter-spacing: -0.015em;
+  text-wrap: balance;
+}
+
+h1 {
+  font-size: 34px;
+  line-height: 1.12;
+  font-weight: 760;
+  letter-spacing: -0.025em;
+}
+
+h2 {
+  font-size: 20px;
+  line-height: 1.25;
+  font-weight: 700;
+}
+
+h3 {
+  font-size: 17px;
+  line-height: 1.3;
+  font-weight: 700;
+}
+
+p,
+ul,
+ol {
+  margin: 0;
+}
+
+a {
+  color: var(--brand-text);
+  text-underline-offset: 3px;
+}
+
+:focus-visible {
+  outline: 2px solid var(--brand-text);
+  outline-offset: 2px;
+}
+
+.muted {
   color: var(--muted);
 }
 
-select,
-textarea,
-input[type="number"],
-input[type="password"] {
-  padding: 6px 8px;
-  font: inherit;
-  color: inherit;
-  background: transparent;
-  border: 1px solid var(--border);
-  border-radius: 6px;
+.small {
+  font-size: 14.5px;
 }
 
-textarea {
-  resize: vertical;
+/* The signature under a page's title: the one flourish the brand allows itself. */
+.title::after {
+  content: "";
+  display: block;
+  width: 132px;
+  height: 12px;
+  margin-top: 8px;
+  background: var(--brand);
+  -webkit-mask:
+    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 132 12' preserveAspectRatio='none'%3E%3Cpath d='M2 8c15-8 24 5 40 0s24-8 40-2 26 4 48-2' fill='none' stroke='%23000' stroke-width='2.6' stroke-linecap='round'/%3E%3C/svg%3E")
+    no-repeat center / 100% 100%;
+  mask:
+    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 132 12' preserveAspectRatio='none'%3E%3Cpath d='M2 8c15-8 24 5 40 0s24-8 40-2 26 4 48-2' fill='none' stroke='%23000' stroke-width='2.6' stroke-linecap='round'/%3E%3C/svg%3E")
+    no-repeat center / 100% 100%;
 }
 
-button {
-  padding: 7px 10px;
+/* Buttons */
+.button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  box-sizing: border-box;
+  min-height: 42px;
+  padding: 0 18px;
   font: inherit;
-  font-weight: 600;
-  color: #ffffff;
-  background: #2563eb;
-  border: 0;
-  border-radius: 6px;
+  font-weight: 650;
+  color: var(--on-brand);
+  text-decoration: none;
+  background: var(--brand-solid);
+  border: 1px solid transparent;
+  border-radius: var(--radius);
   cursor: pointer;
+  touch-action: manipulation;
+  transition: background-color 0.12s ease;
 }
 
-button:disabled {
+.button:hover {
+  background: var(--brand-solid-hover);
+}
+
+.button:disabled {
   opacity: 0.5;
   cursor: default;
 }
 
-button.secondary {
+.button.quiet {
+  color: var(--ink);
+  background: transparent;
+  border-color: var(--line-strong);
+}
+
+.button.quiet:hover {
+  background: var(--sunken);
+}
+
+.button.danger {
+  color: #ffffff;
+  background: #b3261e;
+}
+
+.button.compact {
+  min-height: 36px;
+  padding: 0 14px;
+  font-size: 15px;
+}
+
+.button.wide {
+  width: 100%;
+}
+
+/* A switch is a checkbox that says on or off. */
+.switch {
+  appearance: none;
+  flex: none;
+  position: relative;
+  width: 46px;
+  height: 28px;
+  margin: 0;
+  background: var(--line-strong);
+  border-radius: 999px;
+  cursor: pointer;
+  transition: background-color 0.15s ease;
+}
+
+.switch::after {
+  content: "";
+  position: absolute;
+  top: 3px;
+  left: 3px;
+  width: 22px;
+  height: 22px;
+  background: #ffffff;
+  border-radius: 50%;
+  box-shadow: 0 1px 2px rgb(0 0 0 / 0.28);
+  transition: transform 0.15s ease;
+}
+
+.switch:checked {
+  background: var(--brand-solid);
+}
+
+.switch:checked::after {
+  transform: translateX(18px);
+}
+
+/* A setting: what it is on the left, its control on the right, one hit target. */
+.row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 24px;
+  padding: 16px 0;
+}
+
+.row + .row {
+  border-top: 1px solid var(--line);
+}
+
+.row .words {
+  display: grid;
+  gap: 2px;
+  min-width: 0;
+}
+
+.row .name {
+  font-weight: 650;
+  color: var(--ink);
+}
+
+.row .desc {
+  font-size: 14.5px;
+  color: var(--muted);
+}
+
+/* Text fields */
+.field {
+  display: grid;
+  gap: 6px;
+}
+
+.field > span {
+  font-weight: 650;
+  color: var(--ink);
+}
+
+.input {
+  box-sizing: border-box;
+  width: 100%;
+  min-height: 42px;
+  padding: 0 12px;
+  font: inherit;
   color: var(--text);
-  background: transparent;
-  border: 1px solid var(--border);
+  background-color: var(--sheet);
+  border: 1px solid var(--line-strong);
+  border-radius: var(--radius);
 }
 
-button.link {
-  padding: 0;
-  font-weight: 400;
-  color: var(--accent);
-  background: transparent;
+.input::placeholder {
+  color: var(--muted);
 }
 
-:focus-visible {
-  outline: 2px solid var(--accent);
-  outline-offset: 1px;
+/* Status: a dot and the word for it, never the dot alone. */
+.status {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 5px 13px 5px 11px;
+  font-size: 14.5px;
+  font-weight: 650;
+  color: var(--ink);
+  white-space: nowrap;
+  background: var(--sheet);
+  border: 1px solid var(--line);
+  border-radius: 999px;
+}
+
+.status::before,
+.dot {
+  content: "";
+  flex: none;
+  width: 9px;
+  height: 9px;
+  background: var(--dot-off);
+  border-radius: 50%;
+}
+
+.status[data-state="connected"]::before,
+[data-state="connected"] > .dot {
+  background: var(--dot-ok);
+}
+
+.status[data-state="waiting"]::before,
+[data-state="waiting"] > .dot {
+  background: var(--dot-warn);
+}
+
+.status[data-state="problem"]::before,
+[data-state="problem"] > .dot {
+  background: var(--dot-danger);
+}
+
+/* Things, as opposed to sections: an app, an automation, a list. */
+.sheet {
+  background: var(--sheet);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-lg);
+}
+
+.notice {
+  padding: 12px 14px;
+  background: var(--sunken);
+  border-radius: var(--radius);
+}
+
+.notice.warn {
+  color: var(--warn-text);
+  background: var(--warn-soft);
+}
+
+.notice.danger {
+  color: var(--danger);
+  background: var(--danger-soft);
+}
+
+.code {
+  margin: 0;
+  padding: 12px 14px;
+  overflow: auto;
+  font: 13.5px / 1.55 var(--mono);
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  background: var(--sunken);
+  border-radius: var(--radius);
+}
+
+.count {
+  display: inline-grid;
+  place-items: center;
+  box-sizing: border-box;
+  min-width: 22px;
+  height: 22px;
+  padding: 0 6px;
+  font-size: 13px;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  color: #ffffff;
+  background: #b45309;
+  border-radius: 999px;
+}
+
+.brand {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 21px;
+  font-weight: 800;
+  letter-spacing: -0.035em;
+  color: var(--ink);
+  text-decoration: none;
+}
+
+.mark {
+  flex: none;
+  display: block;
+}
+
+/* The bar on top of every full page */
+.top {
+  position: sticky;
+  top: 0;
+  z-index: 5;
+  background: color-mix(in srgb, var(--paper) 90%, transparent);
+  border-bottom: 1px solid var(--line);
+  backdrop-filter: blur(10px);
+}
+
+.top-inner {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px 22px;
+  box-sizing: border-box;
+  max-width: 760px;
+  margin: 0 auto;
+  padding: 12px 24px;
+}
+
+.top nav {
+  display: flex;
+  gap: 2px;
+  margin-right: auto;
+}
+
+.top nav a {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 12px;
+  font-weight: 650;
+  color: var(--muted);
+  text-decoration: none;
+  border-radius: 8px;
+}
+
+.top nav a:hover {
+  color: var(--ink);
+  background: var(--sunken);
+}
+
+.top nav a[aria-current="page"] {
+  color: var(--ink);
+  background: var(--brand-soft);
+}
+
+.skip {
+  position: absolute;
+  left: -999px;
+}
+
+.skip:focus {
+  top: 12px;
+  left: 12px;
+  z-index: 10;
+  padding: 8px 12px;
+  background: var(--sheet);
+  border-radius: 8px;
+}
+
+.page {
+  display: grid;
+  gap: 40px;
+  box-sizing: border-box;
+  max-width: 760px;
+  margin: 0 auto;
+  padding: 44px 24px 96px;
+}
+
+.page > .intro {
+  display: grid;
+  gap: 14px;
+}
+
+.lead {
+  max-width: 58ch;
+  font-size: 19px;
+  line-height: 1.45;
+  color: var(--muted);
+}
+
+/* Words to say to the AI app, set apart like a quotation. */
+.example {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 14px 14px 14px 20px;
+}
+
+.example p {
+  font-size: 18px;
+  font-style: italic;
+  font-weight: 500;
+  color: var(--ink);
+}
+
+.visually-hidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .button,
+  .switch,
+  .switch::after {
+    transition: none;
+  }
 }

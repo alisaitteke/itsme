@@ -1,4 +1,5 @@
 import { browser } from 'wxt/browser';
+import { BRAND, markSvg } from '../shared/brand.ts';
 import {
   DEFAULT_INDICATOR,
   type IndicatorStyle,
@@ -19,29 +20,30 @@ const BASE_CSS = `
 .wrap {
   position: fixed; inset: 0; pointer-events: none; transition: opacity ${FADE_MS}ms ease;
   animation: itsme-in .3s ease-out;
-  --a: #2f6bff; --b: #8b5cf6; --c: #22d3ee;
+  --a: ${BRAND.green}; --b: #19b98a; --c: #62e6c0;
 }
-.wrap.dark { --a: #5b8cff; }
+.wrap.dark { --a: #2cbf8c; }
 .wrap.out { opacity: 0; }
 .fx { position: absolute; inset: 0; overflow: hidden; }
 .still, .still .fx * { animation: none !important; transition: none !important; }
 .pill {
-  position: absolute; right: 12px; bottom: 12px; display: flex; align-items: center; gap: 8px;
-  padding: 6px 6px 6px 12px; font: 12px/1.4 system-ui, sans-serif; color: #ffffff;
-  background: #1f2937; border-radius: 999px; box-shadow: 0 4px 14px rgb(0 0 0 / 0.3);
+  position: absolute; right: 14px; bottom: 14px; display: flex; align-items: center; gap: 10px;
+  padding: 6px 6px 6px 8px; font: 600 14px/1.4 system-ui, sans-serif; color: ${BRAND.paper};
+  background: ${BRAND.ink}; border-radius: 999px; box-shadow: 0 6px 20px rgb(0 0 0 / 0.3);
 }
 .pill[hidden] { display: none; }
-.dot { width: 8px; height: 8px; border-radius: 50%; background: #60a5fa; }
+.mark { display: block; border-radius: 50%; }
 button {
-  padding: 3px 10px; font: inherit; font-weight: 600; color: #1f2937; background: #ffffff;
+  padding: 5px 14px; font: inherit; font-weight: 700; color: ${BRAND.ink}; background: ${BRAND.mint};
   border: 0; border-radius: 999px; cursor: pointer; pointer-events: auto;
 }
+button:focus-visible { outline: 2px solid #ffffff; outline-offset: 2px; }
 @keyframes itsme-in { from { opacity: 0; } }
 `;
 
 const PILL = `
 <div class="pill" role="status">
-  <span class="dot"></span>
+  ${markSvg(24)}
   <span>itsme is using this tab</span>
   <button id="itsme-stop" type="button">Stop</button>
 </div>`;

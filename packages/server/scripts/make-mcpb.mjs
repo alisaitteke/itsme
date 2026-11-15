@@ -7,7 +7,7 @@ import { createServer } from 'node:net';
 import { join, resolve } from 'node:path';
 import { Client } from '@modelcontextprotocol/client';
 import { StdioClientTransport } from '@modelcontextprotocol/client/stdio';
-import { iconPng } from './icon.mjs';
+import { markPng } from '../../extension/scripts/brand-mark.mjs';
 
 const root = resolve(import.meta.dirname, '..');
 const cli = join(root, 'dist/cli.mjs');
@@ -108,7 +108,7 @@ const manifest = {
 rmSync(stage, { recursive: true, force: true });
 mkdirSync(join(stage, 'server'), { recursive: true });
 copyFileSync(cli, join(stage, 'server/cli.mjs'));
-writeFileSync(join(stage, 'icon.png'), iconPng(512));
+writeFileSync(join(stage, 'icon.png'), markPng(512));
 writeFileSync(join(stage, 'manifest.json'), `${JSON.stringify(manifest, null, 2)}\n`);
 
 const mcpb = (...args) =>
