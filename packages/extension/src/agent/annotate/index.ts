@@ -1,6 +1,6 @@
 import type { MarkColor, MarkStyle } from '@itsme/protocol';
 import type { AgentResults, MarkInput } from '../messages.ts';
-import { pageIsDark } from '../page-tone.ts';
+import { darkBehind, pageIsDark } from '../page-tone.ts';
 import { resolveRef } from '../refs.ts';
 import { type Anchor, elementAnchor, quoteAnchors } from './anchor.ts';
 import { LEGEND_CSS, renderLegend } from './legend.ts';
@@ -53,6 +53,8 @@ interface Entry {
   seed: number;
   /** Null when what the mark quotes isn't on the page; it is then only in the legend. */
   anchor: Anchor | null;
+  /** Whether it lies on something dark, which decides its tones and how it blends. */
+  onDark: boolean;
   strokes: SVGGElement;
   pin: HTMLElement;
   /** The lines the strokes were drawn for, to tell a reflow from a mere move. */
@@ -63,11 +65,10 @@ interface Layer {
   /** The page the marks belong to; an app that goes to another one takes them along otherwise. */
   page: string;
   title: string;
-  dark: boolean;
   still: boolean;
-  ink: HTMLElement;
+  /** Marks on light ground and marks on dark ground: each kind blends its own way. */
+  ink: Record<'light' | 'dark', { host: HTMLElement; svg: SVGSVGElement }>;
   ui: HTMLElement;
-  svg: SVGSVGElement;
   pins: HTMLElement;
   panel: HTMLElement;
   entries: Entry[];
@@ -80,16 +81,22 @@ let layer: Layer | null = null;
 
 const pageKey = () => location.origin + location.pathname + location.search;
 
-function createLayer(): Layer {
-  const dark = pageIsDark();
-  const ink = document.createElement('div');
-  // Like a highlighter on paper: marks darken a light page and lighten a dark one, and
-  // the text under them stays as sharp as it was. Only a whole layer can blend with the page.
-  ink.style.cssText = `${HOST} mix-blend-mode: ${dark ? 'screen' : 'multiply'};`;
+/**
+ * A layer of ink. Like a highlighter on paper, marks darken light ground and lighten
+ * dark ground, and the text under them stays as sharp as it was. Only a whole layer
+ * can blend with the page, hence one for each.
+ */
+function inkLayer(blend: 'multiply' | 'screen') {
+  const host = document.createElement('div');
+  host.style.cssText = `${HOST} mix-blend-mode: ${blend};`;
   // Closed, so the page's own scripts can't reach in.
-  const inkRoot = ink.attachShadow({ mode: 'closed' });
-  inkRoot.innerHTML = `<style>${INK_CSS}</style><svg aria-hidden="true"></svg>`;
+  const root = host.attachShadow({ mode: 'closed' });
+  root.innerHTML = `<style>${INK_CSS}</style><svg aria-hidden="true"></svg>`;
+  return { host, svg: root.querySelector('svg') as SVGSVGElement };
+}
 
+function createLayer(): Layer {
+  const ink = { light: inkLayer('multiply'), dark: inkLayer('screen') };
   const ui = document.createElement('div');
   ui.style.cssText = HOST;
   const uiRoot = ui.attachShadow({ mode: 'closed' });
@@ -112,18 +119,16 @@ function createLayer(): Layer {
   if (document.body) resized.observe(document.body);
 
   const panel = uiRoot.querySelector('.panel') as HTMLElement;
-  panel.classList.toggle('dark', dark);
+  panel.classList.toggle('dark', pageIsDark());
   panel.classList.toggle('closed', innerWidth < ROOMY);
 
-  document.documentElement.append(ink, ui);
+  document.documentElement.append(ink.light.host, ink.dark.host, ui);
   return {
     page: pageKey(),
     title: DEFAULT_TITLE,
-    dark,
     still: matchMedia('(prefers-reduced-motion: reduce)').matches,
     ink,
     ui,
-    svg: inkRoot.querySelector('svg') as SVGSVGElement,
     pins: uiRoot.querySelector('.pins') as HTMLElement,
     panel,
     entries: [],
@@ -136,9 +141,12 @@ function createLayer(): Layer {
   };
 }
 
+/** Where the layers' own corner is in the window; marks are placed from there. */
+const originOf = (of: Layer): DOMRect => of.ink.light.host.getBoundingClientRect();
+
 function draw(entry: Entry, lines: readonly Box[], delay: number | null): void {
   if (!layer) return;
-  const tones = tonesFor(entry.color, layer.dark);
+  const tones = tonesFor(entry.color, entry.onDark);
   const paths = sketch(entry.style, lines, entry.seed).map((stroke) => {
     const path = document.createElementNS(SVG_NS, 'path');
     path.setAttribute('d', stroke.d);
@@ -212,7 +220,7 @@ function follow(): void {
     clearAnnotations();
     return;
   }
-  const origin = layer.ink.getBoundingClientRect();
+  const origin = originOf(layer);
   for (const entry of layer.entries) place(entry, origin);
 }
 
@@ -245,7 +253,7 @@ function showLegend(): void {
         const entry = entries.find((candidate) => candidate.number === number);
         if (!entry || !layer) return;
         const delay = reveal(entry) ? SCROLL_HEAD_START_MS : 0;
-        place(entry, layer.ink.getBoundingClientRect(), delay);
+        place(entry, originOf(layer), delay);
       },
       folded() {
         makeRoom();
@@ -276,6 +284,7 @@ export function annotate(
   if (title) current.title = title;
 
   const added = marks.map((mark, index): Entry => {
+    const anchor = anchors[index] ?? null;
     const number = current.entries.length + index + 1;
     const color = mark.color ?? MARK_COLORS[(number - 1) % MARK_COLORS.length] ?? 'yellow';
     const strokes = document.createElementNS(SVG_NS, 'g');
@@ -291,14 +300,15 @@ export function annotate(
       style: mark.style,
       color,
       seed: number * 7_919,
-      anchor: anchors[index] ?? null,
+      anchor,
+      onDark: darkBehind(anchor?.element() ?? null),
       strokes,
       pin,
       drawnFor: '',
     };
   });
   current.entries.push(...added);
-  current.svg.append(...added.map((entry) => entry.strokes));
+  for (const entry of added) current.ink[entry.onDark ? 'dark' : 'light'].svg.append(entry.strokes);
   current.pins.append(...added.map((entry) => entry.pin));
   showLegend();
   // Before anything is drawn: moving the page reflows the text the marks go on.
@@ -308,7 +318,7 @@ export function annotate(
   const first = placed[0];
   const start = first && reveal(first) ? SCROLL_HEAD_START_MS : 0;
   const gap = Math.min(STAGGER_MS, STAGGER_TOTAL_MS / Math.max(1, placed.length));
-  const origin = current.ink.getBoundingClientRect();
+  const origin = originOf(current);
   for (const [index, entry] of placed.entries()) place(entry, origin, start + index * gap);
 
   return {
@@ -323,7 +333,8 @@ export function clearAnnotations(): void {
     document.documentElement.style.setProperty('margin-left', value, priority);
   }
   layer?.unwatch();
-  layer?.ink.remove();
+  layer?.ink.light.host.remove();
+  layer?.ink.dark.host.remove();
   layer?.ui.remove();
   layer = null;
 }

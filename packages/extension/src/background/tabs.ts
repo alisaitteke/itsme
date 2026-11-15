@@ -1,5 +1,6 @@
 import { BridgeError, type Tab } from '@itsme/protocol';
 import { type Browser, browser } from 'wxt/browser';
+import { pageUrlOf } from '../shared/reader.ts';
 
 const LOAD_TIMEOUT_MS = 15_000;
 // How long to wait for a navigation to begin before assuming it stayed in the same document.
@@ -13,7 +14,8 @@ export function toTab(tab: BrowserTab): Tab {
   return {
     id: tab.id,
     windowId: tab.windowId,
-    url: tab.url ?? tab.pendingUrl ?? '',
+    // A PDF in itsme's reader goes by its own address, not the reader's.
+    url: pageUrlOf(tab.url ?? tab.pendingUrl ?? ''),
     title: tab.title ?? '',
     active: tab.active,
   };

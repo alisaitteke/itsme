@@ -5,5 +5,5 @@ export default defineContentScript({
   matches: ['<all_urls>'],
   // Injected on demand by the background instead of into every page.
   registration: 'runtime',
-  main: startAgent,
+  main: () => startAgent(),
 });

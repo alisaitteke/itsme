@@ -1,4 +1,5 @@
 import { BridgeError } from '@itsme/protocol';
+import { pageUrlOf } from '../shared/reader.ts';
 import { allowSite, loadSettings } from '../shared/settings.ts';
 import { hostOf, matchesSite } from '../shared/sites.ts';
 import { callAgent } from './agent-client.ts';
@@ -38,7 +39,7 @@ async function verdictFor(host: string): Promise<Verdict> {
  */
 export async function ensureSiteAllowed(tab: BrowserTab): Promise<void> {
   // Pages that aren't http(s) can't be scripted anyway and report that themselves.
-  const host = hostOf(tab.url ?? '');
+  const host = hostOf(pageUrlOf(tab.url ?? ''));
   if (!host) return;
 
   let verdict = await verdictFor(host);

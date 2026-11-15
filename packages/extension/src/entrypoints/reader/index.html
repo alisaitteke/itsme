@@ -1,0 +1,31 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>PDF · itsme</title>
+    <link rel="stylesheet" href="../../ui/base.css" />
+    <link rel="stylesheet" href="./style.css" />
+  </head>
+  <body>
+    <header class="bar">
+      <span id="mark" class="brand" translate="no"></span>
+      <h1 id="name">PDF</h1>
+      <span id="place" class="muted small" role="status"></span>
+      <div class="zoom">
+        <button id="zoom-out" type="button" class="button quiet compact" aria-label="Zoom out">
+          −
+        </button>
+        <span id="zoom-level" class="small">100%</span>
+        <button id="zoom-in" type="button" class="button quiet compact" aria-label="Zoom in">
+          +
+        </button>
+      </div>
+    </header>
+
+    <p id="note" class="notice" role="status">Opening the PDF…</p>
+    <main id="pages"></main>
+
+    <script type="module" src="./main.ts"></script>
+  </body>
+</html>

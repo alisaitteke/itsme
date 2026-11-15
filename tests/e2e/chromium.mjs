@@ -9,6 +9,7 @@ import { tmpdir } from 'node:os';
 import { join, resolve } from 'node:path';
 import { Client } from '@modelcontextprotocol/client';
 import { StdioClientTransport } from '@modelcontextprotocol/client/stdio';
+import { makePdf } from './make-pdf.mjs';
 
 const root = resolve(import.meta.dirname, '../..');
 const serverEntry = join(root, 'packages/server/dist/cli.mjs');
@@ -85,6 +86,11 @@ const pages = {
   '/frame': `<button onclick="this.textContent = 'Frame clicked'">Frame button</button>`,
 };
 
+const reportPdf = makePdf([
+  ['Annual report', 'Revenue rose 12 percent.'],
+  ['Outlook', 'Costs fell.'],
+]);
+
 /** Every press of the Ping button on the /auto page, as the site saw it. */
 const hits = [];
 
@@ -95,6 +101,11 @@ const site = createServer((req, res) => {
   if (req.url.startsWith('/api/')) {
     res.writeHead(200, { 'Content-Type': 'application/json' });
     res.end('{"ok":true}');
+    return;
+  }
+  if (req.url === '/report.pdf') {
+    res.writeHead(200, { 'Content-Type': 'application/pdf' });
+    res.end(reportPdf);
     return;
   }
   res.writeHead(200, { 'Content-Type': 'text/html' });
@@ -933,6 +944,44 @@ try {
     );
     marked = await on('page_annotate', { marks: [{ label: 'Neither quote nor ref' }] });
     check('a mark needs a quote or a ref', marked.text.startsWith('INVALID_PARAMS'), marked.text);
+  }
+
+  // --- PDFs ---
+  {
+    const before = (await json('tabs_list')).tabs.find((entry) => entry.id === tab.id).url;
+    const pdfUrl = `${base}/report.pdf`;
+    await on('page_navigate', { url: pdfUrl });
+    const read = await on('page_text');
+    check(
+      'a PDF is read, page by page, under its own address',
+      read.text.startsWith(`URL: ${pdfUrl}`) &&
+        ['Page 1 of 2', 'Revenue rose 12 percent.', 'Page 2 of 2', 'Costs fell.'].every((part) =>
+          read.text.includes(part),
+        ),
+      read.text,
+    );
+    const shown = await inExtension(`chrome.tabs.get(${tab.id}).then((found) => found.url)`);
+    check('it is shown in the reader', shown.includes('/reader.html?src='), shown);
+    const listedPdf = (await json('tabs_list')).tabs.find((entry) => entry.id === tab.id);
+    check('tabs_list gives the PDF, not the reader', listedPdf.url === pdfUrl, listedPdf.url);
+
+    const marked = await on('page_annotate', {
+      marks: [{ quote: 'costs fell', label: 'Costs', style: 'circle' }],
+    });
+    check('a PDF can be marked', marked.text.startsWith('Marked 1'), marked.text);
+    await on('page_annotate', { marks: [] });
+
+    const zoomOf = (outlined) => Number(/text "(\d+)%"/.exec(outlined)?.[1]);
+    const opened = (await on('page_snapshot', { maxChars: 600 })).text;
+    await on('page_click', { ref: refIn(opened, /\[(e\d+)\] button "Zoom in"/) });
+    await sleep(300);
+    const zoomed = (await on('page_snapshot', { maxChars: 600 })).text;
+    check(
+      'the reader takes clicks',
+      zoomOf(zoomed) > zoomOf(opened),
+      `${zoomOf(opened)}% then ${zoomOf(zoomed)}%`,
+    );
+    await on('page_navigate', { url: before });
   }
 
   // --- badge and stop ---

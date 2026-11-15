@@ -24,8 +24,8 @@ const TONES: Record<MarkColor, { marker: string; ink: string }> = {
 export const inkOf = (color: MarkColor): string => TONES[color].ink;
 
 /**
- * Colors for drawing on the page. The layer darkens a light page and lightens a dark
- * one (see the blend mode in layer.ts), so on a dark page the two tones swap jobs.
+ * Colors for drawing on the page. Ink darkens light ground and lightens dark ground
+ * (see inkLayer in index.ts), so on dark ground the two tones swap jobs.
  */
 export function tonesFor(color: MarkColor, dark: boolean): { wash: string; line: string } {
   const { marker, ink } = TONES[color];

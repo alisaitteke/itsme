@@ -3,6 +3,7 @@ import { browser } from 'wxt/browser';
 import { addToSession, removeFromSession, sessionTabs } from '../../background/session-tabs.ts';
 import { loadAutomations } from '../../shared/automations.ts';
 import { markSvg } from '../../shared/brand.ts';
+import { pageUrlOf } from '../../shared/reader.ts';
 import { allowSite, loadSettings, saveSettings } from '../../shared/settings.ts';
 import { hostOf } from '../../shared/sites.ts';
 import { byId } from '../../ui/dom.ts';
@@ -26,7 +27,8 @@ const refreshStatus = watchStatus((view) => {
 async function setupSharing(): Promise<void> {
   const [tab] = await browser.tabs.query({ active: true, currentWindow: true });
   const tabId = tab?.id;
-  const host = hostOf(tab?.url ?? '');
+  // A PDF in itsme's reader counts as the site it came from.
+  const host = hostOf(pageUrlOf(tab?.url ?? ''));
   if (tabId === undefined || !host) {
     byId('site').textContent = 'This page';
     byId('tab-note').textContent = 'Browser pages like this one can’t be shared with itsme.';

@@ -1,4 +1,5 @@
 import type { Locator, Match } from '@itsme/protocol';
+import { pageUrlOf } from '../shared/reader.ts';
 import { isInteractive, isLeaf, nameOf, roleOf, stateOf } from './describe.ts';
 import { clean, composedChildren, frameDocument, isInput, isRendered, visibleText } from './dom.ts';
 import type { AgentCall, AgentResults } from './messages.ts';
@@ -102,12 +103,15 @@ function walk(el: Element, depth: number, out: OutlineWriter, options: SnapshotO
   if (block || shown) out.flushText();
 }
 
+/** The page's address; for a PDF in itsme's reader, the PDF's own. */
+const pageAddress = () => pageUrlOf(location.href);
+
 export function takeSnapshot(options: SnapshotOptions): AgentResults['snapshot'] {
   const root = options.ref ? resolveRef(options.ref) : document.body;
   const out = new OutlineWriter(options.maxChars);
   if (root) walk(root, 0, out, options);
   const outline = out.toString();
-  return { url: location.href, title: document.title, outline, truncated: out.truncated };
+  return { url: pageAddress(), title: document.title, outline, truncated: out.truncated };
 }
 
 function ownText(el: Element): string {
@@ -194,7 +198,7 @@ export function readText(maxChars: number): AgentResults['text'] {
   const source = mainText.length >= MIN_ARTICLE_LENGTH ? mainText : visibleText(document.body);
   const text = source.replace(/\n{3,}/g, '\n\n').trim();
   return {
-    url: location.href,
+    url: pageAddress(),
     title: document.title,
     text: text.slice(0, maxChars),
     truncated: text.length > maxChars,

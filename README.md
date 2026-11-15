@@ -110,7 +110,17 @@ Firefox has no tab group API, so there the extension keeps its own list of share
 - A mark is found by its `quote`, compared without regard to whitespace, case or the kind of quotes and dashes, or by an element `ref`. A quote that isn't on the page stays in the legend without a place, and the tool says so.
 - Pressing a legend entry scrolls to its mark and draws it again. "Clear marks" removes everything, as does calling the tool with no marks or leaving the page.
 - Nothing is added to the page's own elements. The marks are drawn in a layer over the page and follow the text when it moves. While the open legend would cover marked text, the page gets a left margin; folding the legend gives it back.
-- Text inside iframes can't be marked. PDFs in the browser's viewer can't either.
+- Text inside iframes can't be marked.
+
+## PDFs
+
+The browser's own PDF viewer shows a document no extension can read or draw on. When a page tool reaches a tab that shows a PDF, itsme moves the tab into a reader of its own, built on pdf.js, and works there: `page_text` and `page_snapshot` give the text with a "Page 3 of 12" line before each page, and `page_annotate` marks it like any other page.
+
+- The tools keep reporting the PDF's own address and name, and site permissions go by the site the PDF came from.
+- "Open the original" in the reader opens the PDF in a new tab, in the browser's viewer. Back in the tab's history goes to it too.
+- A scanned PDF is pictures of pages and has no text to read or mark. A password-protected one doesn't open; the reader says so.
+- A PDF opened from disk needs "Allow access to file URLs" switched on for the extension.
+- The whole document is read before the first answer, so a very long PDF takes a moment.
 
 ## Indicator
 
@@ -234,7 +244,7 @@ packages/
     src/agent/        content script: outline, find, geometry, scripted actions, site prompt, indicator
       annotate/         marks drawn over the page and their legend
       effects/          the indicator's animations, one file each
-    src/entrypoints/  background, agent content script, popup, options, setup and automations pages, the animation preview
+    src/entrypoints/  background, agent content script, popup, options, setup and automations pages, the animation preview, the PDF reader
     src/ui/           what the pages share: styles, top bar, status
     brand/, scripts/  the mark and the script that draws the icons from it (`pnpm --filter @itsme/extension icons`)
 tests/

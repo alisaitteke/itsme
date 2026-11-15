@@ -137,7 +137,11 @@ function afterPaint(done: () => void): void {
   setTimeout(once, 120);
 }
 
-export function startAgent(): void {
+/**
+ * Starts answering the background's calls. With `ready`, calls that use the page wait
+ * for it: the PDF reader has nothing to read until the document is laid out.
+ */
+export function startAgent(ready?: Promise<unknown>): void {
   // After an extension reload the old copy still sits in this world; the newest one answers.
   const scope = globalThis as { __itsmeAgent?: symbol };
   const instance = Symbol('itsme-agent');
@@ -153,6 +157,13 @@ export function startAgent(): void {
       afterPaint(() => sendResponse({ ok: true, result: {} } satisfies AgentResponse));
       return true;
     }
-    sendResponse(respond(message));
+    if (!ready || PASSIVE.has(message.kind)) {
+      sendResponse(respond(message));
+      return;
+    }
+    const answer = () => sendResponse(respond(message));
+    // A document that failed to load is still a page that can say so.
+    void ready.then(answer, answer);
+    return true;
   });
 }

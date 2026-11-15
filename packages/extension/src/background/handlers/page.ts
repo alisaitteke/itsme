@@ -1,6 +1,7 @@
 import { BridgeError, type Target } from '@itsme/protocol';
 import { browser } from 'wxt/browser';
 import { keyInfo } from '../../shared/keys.ts';
+import { pageUrlOf, pdfShownAt, readerUrlFor } from '../../shared/reader.ts';
 import { callAgent } from '../agent-client.ts';
 import { activeDebugger } from '../debugger/index.ts';
 import { pngAtViewportSize } from '../image.ts';
@@ -8,7 +9,7 @@ import { currentInput } from '../input/index.ts';
 import type { Handlers } from '../router.ts';
 import { describeTab, sessionTab } from '../session-tabs.ts';
 import { ensureSiteAllowed, refuseBlocked } from '../site-access.ts';
-import { type BrowserTab, showTab, watchLoad } from '../tabs.ts';
+import { type BrowserTab, getTab, showTab, watchLoad } from '../tabs.ts';
 import { openSessionTab } from './tabs.ts';
 
 const WAIT_POLL_MS = 200;
@@ -42,11 +43,44 @@ function targetOf({ ref, x, y }: Target): Target {
   return { ref, x, y };
 }
 
+/** The tab and address last asked whether it shows a PDF, and the answer. */
+let lastPdfCheck: { tabId: number; url: string; pdf: boolean } | null = null;
+
+async function showsPdf(tab: BrowserTab): Promise<boolean> {
+  const url = tab.url ?? '';
+  if (pdfShownAt(url) !== null) return false;
+  if (lastPdfCheck?.tabId === tab.id && lastPdfCheck.url === url) return lastPdfCheck.pdf;
+  let pdf = false;
+  try {
+    const [frame] = await browser.scripting.executeScript({
+      target: { tabId: tab.id },
+      func: () => document.contentType === 'application/pdf',
+    });
+    pdf = frame?.result === true;
+  } catch {
+    // A page that can't be scripted says so itself when a call reaches it.
+  }
+  lastPdfCheck = { tabId: tab.id, url, pdf };
+  return pdf;
+}
+
+/** Moves a tab that shows a PDF into itsme's reader, where it can be read and marked. */
+async function intoReader(tab: BrowserTab): Promise<BrowserTab> {
+  if (!(await showsPdf(tab))) return tab;
+  const loaded = watchLoad(tab.id, false);
+  await browser.tabs.update(tab.id, { url: readerUrlFor(tab.url ?? '') });
+  await loaded;
+  return getTab(tab.id);
+}
+
 /** The session tab, once the user has allowed the site it is showing. */
 async function pageTab(tabId: number | undefined): Promise<BrowserTab> {
   const tab = await sessionTab(tabId);
-  await ensureSiteAllowed(tab);
-  return tab;
+  // Checked before the reader fetches anything from a site the user has ruled out.
+  await refuseBlocked(pageUrlOf(tab.url ?? ''));
+  const page = await intoReader(tab);
+  await ensureSiteAllowed(page);
+  return page;
 }
 
 async function monitorFor(what: string) {
