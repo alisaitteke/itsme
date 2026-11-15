@@ -62,6 +62,30 @@ export const matchSchema = z.object({
 });
 export type Match = z.infer<typeof matchSchema>;
 
+export const markStyleSchema = z.enum(['highlight', 'underline', 'box', 'circle', 'bracket']);
+export type MarkStyle = z.infer<typeof markStyleSchema>;
+
+export const markColorSchema = z.enum(['yellow', 'green', 'blue', 'pink', 'orange', 'purple']);
+export type MarkColor = z.infer<typeof markColorSchema>;
+
+/** Something on the page to draw on, and what the legend says about it. */
+export const markSchema = z.object({
+  quote: z
+    .string()
+    .min(2)
+    .max(600)
+    .optional()
+    .describe('Text to mark, copied from page_text. The first place it appears is marked'),
+  ref: ref.optional().describe('Element to mark instead of a quote'),
+  label: z.string().trim().min(1).max(60).describe('Short name for the legend'),
+  note: z.string().trim().max(300).optional().describe('A sentence for the legend'),
+  style: markStyleSchema
+    .default('highlight')
+    .describe('bracket suits a whole paragraph, circle a single spot to look at'),
+  color: markColorSchema.optional().describe('Taken in turn when left out'),
+});
+export type Mark = z.infer<typeof markSchema>;
+
 function command<P extends z.ZodType, R extends z.ZodType>(def: { params: P; result: R }) {
   return def;
 }
@@ -146,6 +170,19 @@ export const commands = {
       title: z.string(),
       text: z.string(),
       truncated: z.boolean(),
+    }),
+  }),
+  'page.annotate': command({
+    params: z.object({
+      tabId: optionalTabId,
+      title: z.string().trim().min(1).max(60).optional().describe('Heading of the legend'),
+      marks: z.array(markSchema).max(30).describe('Give none to remove the marks on the page'),
+      keep: z.boolean().default(false).describe('Add to the marks already there'),
+    }),
+    result: z.object({
+      marked: z.number().int(),
+      /** Labels of the marks whose quote isn't on the page. */
+      missing: z.array(z.string()),
     }),
   }),
   'page.click': command({

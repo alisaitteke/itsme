@@ -102,6 +102,14 @@ export const pageHandlers: Handlers = {
     return callAgent(tab.id, { kind: 'text', maxChars });
   },
 
+  'page.annotate': async ({ tabId, title, marks, keep }) => {
+    if (marks.some((mark) => (mark.quote === undefined) === (mark.ref === undefined))) {
+      throw new BridgeError('INVALID_PARAMS', 'Give each mark either a quote or a ref');
+    }
+    const tab = await pageTab(tabId);
+    return callAgent(tab.id, { kind: 'annotate', title, marks, keep });
+  },
+
   'page.click': async ({ tabId, button, count, modifiers, ...target }) => {
     const tab = await pageTab(tabId);
     const input = await currentInput();

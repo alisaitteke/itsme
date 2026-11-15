@@ -15,6 +15,7 @@ export const AGENT_CHANNEL = 'itsme/agent';
 export type Button = 'left' | 'right' | 'middle';
 export type UploadFile = CommandParams<'page.upload'>['files'][number];
 export type Direction = 'up' | 'down' | 'left' | 'right';
+export type MarkInput = CommandParams<'page.annotate'>['marks'][number];
 
 export type AgentCall =
   | {
@@ -29,6 +30,7 @@ export type AgentCall =
   | { kind: 'viewport' }
   | { kind: 'prompt'; host: string }
   | { kind: 'hideIndicator' }
+  | { kind: 'annotate'; title?: string; marks: MarkInput[]; keep: boolean }
   | { kind: 'hasText'; text: string }
   | { kind: 'resolve'; locator: Locator }
   | { kind: 'upload'; ref: string; files: UploadFile[] }
@@ -49,6 +51,7 @@ export interface AgentResults {
   viewport: { width: number; height: number };
   prompt: Record<string, never>;
   hideIndicator: Record<string, never>;
+  annotate: CommandResult<'page.annotate'>;
   hasText: boolean;
   /** `ref` is null when nothing on the page matches. */
   resolve: { ref: string | null; password: boolean };

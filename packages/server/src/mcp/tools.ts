@@ -238,6 +238,28 @@ function pageTools(options: ToolOptions): Tool[] {
       format: (result) => page(result, result.text, result.truncated && 'Truncated.'),
     }),
     tool({
+      command: 'page.annotate',
+      title: 'Annotate page',
+      description:
+        'Draw on the page for the user to see: mark passages with a highlighter, an underline, ' +
+        'a box, a circle or a bracket, and list them in a numbered legend at the side of the page. ' +
+        'Use it to put a summary on the page itself, or to point at the place that answers a ' +
+        'question (one mark, style circle). Quote text as page_text gives it; the page scrolls to ' +
+        'the first mark. Marks stay until the page is left or the user clears them.',
+      format: ({ marked, missing }) =>
+        text(
+          [
+            marked === 0 && missing.length === 0 ? 'Marks removed' : `Marked ${marked}`,
+            ...(missing.length > 0
+              ? [
+                  `Not found on the page: ${missing.join(', ')}. They are in the legend without ` +
+                    'a place. Quote the text exactly as page_text shows it, or mark an element by ref.',
+                ]
+              : []),
+          ].join('\n'),
+        ),
+    }),
+    tool({
       command: 'page.click',
       title: 'Click',
       description: `Click, double-click or right-click. ${POINTER_TARGET}`,

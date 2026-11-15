@@ -57,6 +57,7 @@ The popup shows whether the browser is connected and holds the actions: share th
 | `page_snapshot`                                                                 | Outline of the page with a ref on every element                           |
 | `page_find`                                                                     | Elements whose name, value or text contains a query                       |
 | `page_text`                                                                     | Readable text, preferring the main article                                |
+| `page_annotate`                                                                 | Mark passages on the page and list them in a legend the user sees         |
 | `page_click`, `page_hover`, `page_drag`                                         | Pointer actions on a ref or on `x`, `y` from a screenshot                 |
 | `page_type`, `page_press`                                                       | Text into a field or the focused element; single keys and shortcuts       |
 | `page_scroll`                                                                   | Scroll the page or the area around an element                             |
@@ -101,6 +102,15 @@ To let itsme work on a tab you already have open, press "Share this tab" in the 
 A group counts as itsme's because itsme made it, not because of its name, so a group of yours with the same name stays out of reach. The browser forgets which groups those were when it restarts or the extension is reloaded; only a group titled "itsme" is picked up again.
 
 Firefox has no tab group API, so there the extension keeps its own list of shared tabs instead, and group names and colors are ignored.
+
+## Marks and legend
+
+`page_annotate` draws on the page for the user: a highlighter, an underline, a box, a circle or a bracket over quoted text or an element, each with a number, and a legend at the left that lists them. It is how a summary lands on the page itself, and how "where does it say that?" gets an answer the user can see.
+
+- A mark is found by its `quote`, compared without regard to whitespace, case or the kind of quotes and dashes, or by an element `ref`. A quote that isn't on the page stays in the legend without a place, and the tool says so.
+- Pressing a legend entry scrolls to its mark and draws it again. "Clear marks" removes everything, as does calling the tool with no marks or leaving the page.
+- Nothing is added to the page's own elements. The marks are drawn in a layer over the page and follow the text when it moves. While the open legend would cover marked text, the page gets a left margin; folding the legend gives it back.
+- Text inside iframes can't be marked. PDFs in the browser's viewer can't either.
 
 ## Indicator
 
@@ -222,6 +232,7 @@ packages/
       automations/      store, runner and scheduler for saved automations
       site-access.ts    allowed and blocked sites, the wait for the prompt
     src/agent/        content script: outline, find, geometry, scripted actions, site prompt, indicator
+      annotate/         marks drawn over the page and their legend
       effects/          the indicator's animations, one file each
     src/entrypoints/  background, agent content script, popup, options, setup and automations pages, the animation preview
     src/ui/           what the pages share: styles, top bar, status

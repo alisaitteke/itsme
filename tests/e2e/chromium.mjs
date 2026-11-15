@@ -897,6 +897,44 @@ try {
   await updateSettings({ indicator: 'aurora' });
   await sleep(300);
 
+  // --- marks and legend ---
+  {
+    const greet = refIn(await outline(), /\[(e\d+)\] button "Greet"/);
+    let marked = await on('page_annotate', {
+      title: 'Summary',
+      marks: [
+        { quote: 'greeter', label: 'The heading', style: 'underline' },
+        { ref: greet, label: 'The button', style: 'circle' },
+        { quote: 'words that are nowhere on this page', label: 'Nowhere' },
+      ],
+    });
+    await sleep(900);
+    await snap('marks');
+    check(
+      'page_annotate marks a quote and an element, and says what it could not find',
+      marked.text.startsWith('Marked 2') && marked.text.includes('Not found on the page: Nowhere'),
+      marked.text,
+    );
+    check('the page shows the legend', await hasOverlayButton('itsme-notes-clear'));
+    // In a window this narrow the legend starts folded, with "Clear marks" out of sight.
+    await pressOverlayButton('itsme-notes-fold');
+    await sleep(200);
+    await snap('legend');
+    await pressOverlayButton('itsme-notes-clear');
+    await sleep(200);
+    check('"Clear marks" removes them', !(await hasOverlayButton('itsme-notes-clear')));
+
+    await on('page_annotate', { marks: [{ quote: 'Greeter', label: 'Again' }] });
+    marked = await on('page_annotate', { marks: [] });
+    check(
+      'page_annotate without marks removes them',
+      marked.text === 'Marks removed' && !(await hasOverlayButton('itsme-notes-clear')),
+      marked.text,
+    );
+    marked = await on('page_annotate', { marks: [{ label: 'Neither quote nor ref' }] });
+    check('a mark needs a quote or a ref', marked.text.startsWith('INVALID_PARAMS'), marked.text);
+  }
+
   // --- badge and stop ---
   await outline();
   check('the page shows that itsme is using it', await hasOverlayButton('itsme-stop'));

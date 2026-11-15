@@ -17,6 +17,7 @@
   "dependencies": {
     "@fontsource-variable/figtree": "^5.2.0",
     "@itsme/protocol": "workspace:*",
+    "roughjs": "^4.6.6",
     "zod": "^4.6.7"
   },
   "devDependencies": {

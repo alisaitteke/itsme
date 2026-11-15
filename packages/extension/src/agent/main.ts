@@ -1,5 +1,6 @@
 import { browser } from 'wxt/browser';
 import { click, focus, hover, locate, press, scroll, type, upload } from './actions.ts';
+import { annotate } from './annotate/index.ts';
 import { deepActiveElement } from './dom.ts';
 import { centerOf, isPoint, type Point } from './geometry.ts';
 import {
@@ -39,6 +40,8 @@ function run(request: AgentRequest): unknown {
     case 'hideIndicator':
       hideIndicator();
       return {};
+    case 'annotate':
+      return annotate(request.title, request.marks, request.keep);
     case 'hasText':
       return hasText(request.text);
     case 'resolve':
