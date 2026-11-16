@@ -6,11 +6,6 @@
 
 <p align="center">Let your AI app work in the browser you already use.<br>It only touches the tabs you share and the sites you allow.</p>
 
-<p align="center">
-  <a href="https://github.com/alisaitteke/itsme/releases/latest"><img src="https://img.shields.io/github/v/release/alisaitteke/itsme?color=0b8a62&label=release" alt="Latest release"></a>
-  <a href="https://www.npmjs.com/package/itsme-mcp"><img src="https://img.shields.io/npm/v/itsme-mcp?color=0b8a62&label=itsme-mcp" alt="itsme-mcp on npm"></a>
-</p>
-
 Browser extension plus MCP server that let an MCP client drive the browser you already use: open tabs, read pages, click, type, drag, press keys, take screenshots and read the console and network. It can also save steps as an automation that the extension repeats on a schedule by itself.
 
 Works in Chrome 116+. The Firefox build compiles but has not been run yet.
