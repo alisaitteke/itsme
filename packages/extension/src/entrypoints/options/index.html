@@ -112,8 +112,8 @@
       <section aria-labelledby="connection-title">
         <h2 id="connection-title">Connection</h2>
         <p class="muted">
-          How the extension finds itsme on this computer. Leave these alone unless you changed them
-          on the other side too, and after a change add itsme to your AI app again from
+          The port the extension finds itsme on. Leave it alone unless another program needs
+          47821, and after a change add itsme to your AI apps again from
           <a href="/setup.html">Connect</a>.
         </p>
         <form id="connection" class="sheet connection">
@@ -129,18 +129,7 @@
               required
             />
           </label>
-          <label class="field">
-            <span>Token</span>
-            <input
-              id="token"
-              class="input"
-              type="password"
-              autocomplete="off"
-              spellcheck="false"
-              placeholder="None"
-            />
-          </label>
-          <button type="submit" class="button">Save connection</button>
+          <button type="submit" class="button quiet">Save port</button>
         </form>
       </section>
     </main>

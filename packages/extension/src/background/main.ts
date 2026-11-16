@@ -24,8 +24,8 @@ const RECONNECT_ALARM = 'itsme/reconnect';
 
 const router = createRouter(handlers);
 let connection: BridgeConnection | null = null;
-/** Port and token of the live connection; empty while switched off. */
-let endpoint = '';
+/** Port of the live connection; 0 while switched off. */
+let endpoint = 0;
 
 function describeBrowser(): BrowserInfo {
   const version = /(?:Chrome|Firefox|Version)\/([\d.]+)/.exec(navigator.userAgent)?.[1];
@@ -42,7 +42,7 @@ async function configure(): Promise<void> {
   if (!settings.realInput) detachDebugger();
 
   // A change that doesn't concern the socket must not drop a live connection.
-  const wanted = settings.enabled ? `${settings.port}\n${settings.token}` : '';
+  const wanted = settings.enabled ? settings.port : 0;
   if (wanted === endpoint) return;
   endpoint = wanted;
   connection?.stop();
@@ -51,7 +51,6 @@ async function configure(): Promise<void> {
 
   connection = new BridgeConnection({
     url: `ws://${BRIDGE_HOST}:${settings.port}${EXTENSION_PATH}`,
-    token: settings.token || undefined,
     browser: describeBrowser(),
     onRequest: router.dispatch,
     // No server, no reason to keep the debugger's warning bar on screen.

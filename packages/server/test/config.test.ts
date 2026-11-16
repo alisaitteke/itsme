@@ -12,28 +12,25 @@ describe('parseCli', () => {
   it('uses the defaults with nothing set', () => {
     expect(configFor([])).toMatchObject({
       port: DEFAULT_PORT,
-      token: undefined,
       uploadDirs: [],
       logLevel: 'info',
     });
   });
 
   it('reads settings from the environment, and --port wins over ITSME_PORT', () => {
-    const env = { ITSME_PORT: '5001', ITSME_TOKEN: ' s3cret ', ITSME_UPLOAD_DIRS: '/a:/b' };
-    expect(configFor([], env)).toMatchObject({ port: 5001, token: 's3cret' });
+    const env = { ITSME_PORT: ' 5001 ', ITSME_UPLOAD_DIRS: '/a:/b' };
+    expect(configFor([], env)).toMatchObject({ port: 5001, uploadDirs: ['/a', '/b'] });
     expect(configFor(['--port', '5002'], env).port).toBe(5002);
   });
 
   it('treats blank values and unfilled placeholders as not set', () => {
     const env = {
       ITSME_PORT: '${user_config.port}',
-      ITSME_TOKEN: '${user_config.token}',
       ITSME_UPLOAD_DIRS: '',
       ITSME_LOG_LEVEL: '  ',
     };
     expect(configFor([], env)).toMatchObject({
       port: DEFAULT_PORT,
-      token: undefined,
       uploadDirs: [],
       logLevel: 'info',
     });

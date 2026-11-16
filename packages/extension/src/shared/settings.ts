@@ -9,7 +9,6 @@ const defaultPort = Number(import.meta.env.WXT_ITSME_PORT) || DEFAULT_PORT;
 const settingsSchema = z.object({
   enabled: z.boolean().catch(true),
   port: z.number().int().min(1).max(65_535).catch(defaultPort),
-  token: z.string().catch(''),
   /** Use the debugger where the browser has one: real input, console and network. */
   realInput: z.boolean().catch(true),
   /** "ask": a site has to be allowed by the user before its pages are read or driven. */

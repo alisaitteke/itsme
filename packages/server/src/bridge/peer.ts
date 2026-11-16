@@ -61,13 +61,13 @@ export class PeerLink implements Link {
         fail(
           code === CloseCode.ProtocolMismatch
             ? `an itsme server of another version holds it (${reason}). Close the MCP client that started it`
-            : `the hub closed the connection (${code} ${reason})`,
+            : code === CloseCode.Unauthorized
+              ? 'an older itsme server holds it and asks for a token, which itsme no longer uses. Close the MCP client that started it'
+              : `the hub closed the connection (${code} ${reason})`,
         ),
       );
       socket.once('open', () => {
-        socket.send(
-          encodeMessage({ type: 'hello', protocolVersion: PROTOCOL_VERSION, token: options.token }),
-        );
+        socket.send(encodeMessage({ type: 'hello', protocolVersion: PROTOCOL_VERSION }));
       });
       socket.once('message', (data) => {
         try {

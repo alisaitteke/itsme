@@ -10,7 +10,6 @@ export interface Link {
 
 export interface LinkOptions {
   port: number;
-  token: string | undefined;
   requestTimeoutMs: number;
   serverVersion: string;
   /** Passed on to the extension in the welcome. */

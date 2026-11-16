@@ -41,16 +41,12 @@ const isLocalBuild = (launch: Launch) =>
   /[\\/]packages[\\/]server[\\/]dist[\\/]cli\.mjs$/.test(launch.args[0] ?? '');
 
 /**
- * The entry a client needs to start the server on the same port and with the same token.
+ * The entry a client needs to start the server on the same port.
  * It runs the published package, unless this browser is talking to a local build.
  */
-export function serverEntry(
-  launch: Launch | null,
-  settings: { port: number; token: string },
-): ServerEntry {
+export function serverEntry(launch: Launch | null, settings: { port: number }): ServerEntry {
   const env: Record<string, string> = {};
   if (settings.port !== DEFAULT_PORT) env.ITSME_PORT = String(settings.port);
-  if (settings.token) env.ITSME_TOKEN = settings.token;
   return launch && isLocalBuild(launch)
     ? { command: launch.command, args: launch.args, env }
     : { command: 'npx', args: ['-y', NPM_PACKAGE], env };

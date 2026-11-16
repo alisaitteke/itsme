@@ -25,7 +25,6 @@ Settings go in `env`. All of them are optional; see the [README](../README.md#co
 
 ```json
 "env": {
-  "ITSME_TOKEN": "a-shared-secret",
   "ITSME_UPLOAD_DIRS": "/Users/me/Downloads"
 }
 ```
@@ -36,7 +35,7 @@ To run a build from a checkout of this repository, use `node` as the command and
 
 ## Claude Desktop
 
-Download `itsme.mcpb` from the [latest release](https://github.com/alisaitteke/itsme/releases/latest), open it and press Install. Port, token and upload folder are on the extension's page under Settings → Extensions.
+Download `itsme.mcpb` from the [latest release](https://github.com/alisaitteke/itsme/releases/latest), open it and press Install. Port and upload folder are on the extension's page under Settings → Extensions.
 
 By hand instead: Settings → Developer → Edit Config opens `claude_desktop_config.json`. Add the entry above under `mcpServers`, then quit the app completely and open it again.
 
@@ -184,7 +183,7 @@ Anything that can start a stdio MCP server works. Give it `npx` as the command a
 
 ## Several clients at once
 
-Each client starts its own server, and they all reach the same browser: the first server takes port 47821 and the others relay through it. Nothing has to be configured for that. Clients that set `ITSME_TOKEN` or `ITSME_PORT` must all set the same value.
+Each client starts its own server, and they all reach the same browser: the first server takes port 47821 and the others relay through it. Nothing has to be configured for that. Clients that set `ITSME_PORT` must all set the same value.
 
 ## After updating itsme
 
@@ -199,7 +198,7 @@ Reload the extension on its browser's extensions page and restart every client s
 | The tools don't show up, or the server fails to start      | The app can't find `npx`. Use the full path from `command -v npx`                             |
 | `NOT_CONNECTED: No browser is connected`                   | The browser is closed, or itsme is turned off in its popup                                    |
 | Popup says "Version mismatch"                              | Server and extension are from different releases. Reload the extension and restart the client |
-| Popup says "The server rejected the token"                 | `ITSME_TOKEN` differs from the token in the extension's options                               |
+| Popup says "Restart your AI apps"                          | An app still runs a server from before tokens were dropped. Quit and reopen the apps          |
 | Log says the port is busy with a server of another version | An old server is still running. Close the client that started it                              |
 | `TAB_NOT_SHARED`                                           | The tab isn't in an itsme group. Press "Share this tab" in the popup                          |
 | `SITE_NOT_ALLOWED`                                         | Press Allow on the page, or add the site in the extension's options                           |

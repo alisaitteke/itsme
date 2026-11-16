@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { CLIENTS, quickActionFor, serverEntry, snippetFor } from '../src/shared/mcp-clients.ts';
 
 const local = { command: '/usr/local/bin/node', args: ['/src/itsme/packages/server/dist/cli.mjs'] };
-const defaults = { port: 47821, token: '' };
+const defaults = { port: 47821 };
 const npx = { command: 'npx', args: ['-y', 'itsme-mcp'], env: {} };
 
 describe('serverEntry', () => {
@@ -29,11 +29,8 @@ describe('serverEntry', () => {
     expect(serverEntry(windows, defaults).command).toBe('node.exe');
   });
 
-  it('carries a changed port and a token over to the new client', () => {
-    expect(serverEntry(null, { port: 5000, token: 's3cret' }).env).toEqual({
-      ITSME_PORT: '5000',
-      ITSME_TOKEN: 's3cret',
-    });
+  it('carries a changed port over to the new client', () => {
+    expect(serverEntry(null, { port: 5000 }).env).toEqual({ ITSME_PORT: '5000' });
   });
 });
 
@@ -50,13 +47,13 @@ describe('snippetFor', () => {
   it('puts settings before the -- and quotes what a shell would split', () => {
     const spaced = serverEntry(
       { command: '/Users/me/My Tools/node', args: ["/it's/packages/server/dist/cli.mjs"] },
-      { port: 5000, token: 'a b' },
+      { port: 5000 },
     );
     expect(snippetFor('claude-code', spaced).text).toBe(
-      "claude mcp add --scope user itsme -e ITSME_PORT=5000 -e 'ITSME_TOKEN=a b' -- " +
+      'claude mcp add --scope user itsme -e ITSME_PORT=5000 -- ' +
         "'/Users/me/My Tools/node' '/it'\\''s/packages/server/dist/cli.mjs'",
     );
-    expect(snippetFor('codex', spaced).text).toContain("--env 'ITSME_TOKEN=a b' -- ");
+    expect(snippetFor('codex', spaced).text).toContain('--env ITSME_PORT=5000 -- ');
   });
 
   it('gives JSON clients an mcpServers entry, without env when there is none', () => {
@@ -65,9 +62,9 @@ describe('snippetFor', () => {
         mcpServers: { itsme: { command: 'npx', args: ['-y', 'itsme-mcp'] } },
       });
     }
-    const withToken = serverEntry(null, { port: 47821, token: 't' });
-    expect(JSON.parse(snippetFor('cursor', withToken).text).mcpServers.itsme.env).toEqual({
-      ITSME_TOKEN: 't',
+    const moved = serverEntry(null, { port: 5000 });
+    expect(JSON.parse(snippetFor('cursor', moved).text).mcpServers.itsme.env).toEqual({
+      ITSME_PORT: '5000',
     });
   });
 
@@ -79,7 +76,11 @@ describe('snippetFor', () => {
 });
 
 describe('quickActionFor', () => {
-  const entry = serverEntry(null, { port: 47821, token: 'gizli-şifre' });
+  const build = {
+    command: 'node',
+    args: ['/Users/çağrı/itsme/packages/server/dist/cli.mjs'],
+  };
+  const entry = serverEntry(build, { port: 5000 });
 
   it('has an action and a next step for every client', () => {
     for (const { id } of CLIENTS) {
@@ -107,11 +108,7 @@ describe('quickActionFor', () => {
     expect(link.searchParams.get('name')).toBe('itsme');
     // Also for text outside Latin-1, which plain btoa refuses.
     const config = Buffer.from(link.searchParams.get('config') ?? '', 'base64').toString('utf8');
-    expect(JSON.parse(config)).toEqual({
-      command: 'npx',
-      args: ['-y', 'itsme-mcp'],
-      env: { ITSME_TOKEN: 'gizli-şifre' },
-    });
+    expect(JSON.parse(config)).toEqual({ ...build, env: { ITSME_PORT: '5000' } });
   });
 
   it('gives VS Code its install link, with the name in the entry', () => {
@@ -120,9 +117,8 @@ describe('quickActionFor', () => {
     expect(action.url.startsWith('vscode:mcp/install?')).toBe(true);
     expect(JSON.parse(decodeURIComponent(action.url.slice('vscode:mcp/install?'.length)))).toEqual({
       name: 'itsme',
-      command: 'npx',
-      args: ['-y', 'itsme-mcp'],
-      env: { ITSME_TOKEN: 'gizli-şifre' },
+      ...build,
+      env: { ITSME_PORT: '5000' },
     });
   });
 

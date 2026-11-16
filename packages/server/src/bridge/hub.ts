@@ -1,4 +1,3 @@
-import { createHash, timingSafeEqual } from 'node:crypto';
 import { createServer, type IncomingMessage, type Server } from 'node:http';
 import type { Duplex } from 'node:stream';
 import {
@@ -31,8 +30,6 @@ interface ExtensionConnection {
 
 const EXTENSION_ORIGIN = /^(chrome|moz|safari-web)-extension:\/\//;
 const UNRESPONSIVE_AFTER_MS = KEEPALIVE_INTERVAL_MS * 2.5;
-
-const digest = (value: string) => createHash('sha256').update(value).digest();
 
 function send(socket: WebSocket, message: Message): void {
   if (socket.readyState === WebSocket.OPEN) socket.send(encodeMessage(message));
@@ -143,12 +140,6 @@ export class Hub implements Link {
         socket.close(CloseCode.BadHello, 'Expected hello');
         return;
       }
-      // Checked first, so that only a process holding the token can make this hub step aside.
-      if (!this.#tokenMatches(hello.token)) {
-        logger.warn(`Rejected ${role}: wrong or missing token`);
-        socket.close(CloseCode.Unauthorized, 'Token mismatch');
-        return;
-      }
       if (hello.protocolVersion !== PROTOCOL_VERSION) {
         const reason = `Server speaks protocol ${PROTOCOL_VERSION}, client ${hello.protocolVersion}`;
         logger.warn(`Rejected ${role}: ${reason}`);
@@ -168,12 +159,6 @@ export class Hub implements Link {
       if (role === 'extension' && hello.browser) this.#attachExtension(socket, hello.browser);
       else this.#attachPeer(socket);
     });
-  }
-
-  #tokenMatches(presented: string | undefined): boolean {
-    const expected = this.#options.token;
-    if (expected === undefined) return true;
-    return presented !== undefined && timingSafeEqual(digest(presented), digest(expected));
   }
 
   #attachExtension(socket: WebSocket, info: BrowserInfo): void {

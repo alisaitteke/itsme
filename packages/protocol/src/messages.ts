@@ -13,7 +13,6 @@ export type BrowserInfo = z.infer<typeof browserInfoSchema>;
 const helloSchema = z.object({
   type: z.literal('hello'),
   protocolVersion: z.number().int(),
-  token: z.string().optional(),
   /** Set by extensions, absent for peer servers. */
   browser: browserInfoSchema.optional(),
 });

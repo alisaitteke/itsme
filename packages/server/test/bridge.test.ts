@@ -6,8 +6,9 @@ import {
   PROTOCOL_VERSION,
 } from '@itsme/protocol';
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { WebSocket } from 'ws';
+import { WebSocket, WebSocketServer } from 'ws';
 import { Bridge } from '../src/bridge/bridge.ts';
+import { PeerLink } from '../src/bridge/peer.ts';
 import { connectFakeExtension, freePort, linkOptions } from './helpers.ts';
 
 const tab = { id: 1, windowId: 1, url: 'https://example.com/', title: 'Example', active: true };
@@ -16,9 +17,9 @@ describe('Bridge', () => {
   const bridges: Bridge[] = [];
 
   /** Says hello to the hub as a peer server would, and resolves with the close code. */
-  function peerHello(port: number, protocolVersion: number, token?: string): Promise<number> {
+  function peerHello(port: number, protocolVersion: number): Promise<number> {
     const socket = new WebSocket(`ws://${BRIDGE_HOST}:${port}${PEER_PATH}`);
-    socket.on('open', () => socket.send(encodeMessage({ type: 'hello', protocolVersion, token })));
+    socket.on('open', () => socket.send(encodeMessage({ type: 'hello', protocolVersion })));
     return new Promise((resolve) => socket.on('close', resolve));
   }
 
@@ -70,13 +71,23 @@ describe('Bridge', () => {
     expect(newer.mode).toBe('hub');
   });
 
-  it('keeps the port from an older server and from one without the token', async () => {
+  it('keeps the port from an older server', async () => {
     const port = await freePort();
-    const bridge = await startBridge(port, { token: 'secret' });
+    const bridge = await startBridge(port);
 
-    expect(await peerHello(port, PROTOCOL_VERSION + 1)).toBe(CloseCode.Unauthorized);
-    expect(await peerHello(port, PROTOCOL_VERSION - 1, 'secret')).toBe(CloseCode.ProtocolMismatch);
+    expect(await peerHello(port, PROTOCOL_VERSION - 1)).toBe(CloseCode.ProtocolMismatch);
     expect(bridge.mode).toBe('hub');
+  });
+
+  it('says so when the port is held by a server that still asks for a token', async () => {
+    const port = await freePort();
+    const old = new WebSocketServer({ host: BRIDGE_HOST, port });
+    old.on('connection', (socket) => socket.close(CloseCode.Unauthorized, 'Token mismatch'));
+    try {
+      await expect(PeerLink.connect(linkOptions(port))).rejects.toThrow(/older itsme server/);
+    } finally {
+      await new Promise((done) => old.close(done));
+    }
   });
 
   it('promotes a peer when the hub exits', async () => {

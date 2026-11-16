@@ -29,7 +29,6 @@ export async function freePort(): Promise<number> {
 export function linkOptions(port: number, overrides: Partial<LinkOptions> = {}): LinkOptions {
   return {
     port,
-    token: undefined,
     requestTimeoutMs: 1_000,
     serverVersion: '0.0.0-test',
     logger: silentLogger,
@@ -58,7 +57,7 @@ export interface FakeExtension {
 export async function connectFakeExtension(
   port: number,
   handlers: Record<string, Handler> = {},
-  hello: { token?: string; protocolVersion?: number; origin?: string } = {},
+  hello: { protocolVersion?: number; origin?: string } = {},
 ): Promise<FakeExtension> {
   const socket = new WebSocket(`ws://${BRIDGE_HOST}:${port}${EXTENSION_PATH}`, {
     origin: hello.origin ?? EXTENSION_ORIGIN,
@@ -90,7 +89,6 @@ export async function connectFakeExtension(
     encodeMessage({
       type: 'hello',
       protocolVersion: hello.protocolVersion ?? PROTOCOL_VERSION,
-      token: hello.token,
       browser: browserInfo,
     }),
   );

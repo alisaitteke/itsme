@@ -62,17 +62,4 @@ describe('Hub', () => {
     const extension = await connectFakeExtension(hub.port, {}, { protocolVersion: 999 });
     expect(await extension.closed).toBe(CloseCode.ProtocolMismatch);
   });
-
-  it('enforces the token when one is set', async () => {
-    await hub.close();
-    await startHub({ token: 'secret' });
-
-    const wrong = await connectFakeExtension(hub.port, {}, { token: 'nope' });
-    expect(await wrong.closed).toBe(CloseCode.Unauthorized);
-    const missing = await connectFakeExtension(hub.port);
-    expect(await missing.closed).toBe(CloseCode.Unauthorized);
-
-    await connectFakeExtension(hub.port, {}, { token: 'secret' });
-    expect(await hub.browsers()).toHaveLength(1);
-  });
 });

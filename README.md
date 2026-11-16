@@ -44,7 +44,7 @@ The extension opens a setup page when it is first installed, with one action per
 
 To run a build from this checkout instead of the published package, use `node /absolute/path/to/itsme/packages/server/dist/cli.mjs` as the command. Once the browser is connected to such a build, the setup page offers that path by itself.
 
-The popup shows whether the browser is connected and holds the actions: share the current tab, open the Automations, Connect and Settings pages, switch itsme off. Everything else is on the Settings page, which is the extension's options page: the debugger option, the animation, allowed and blocked sites, port and token.
+The popup shows whether the browser is connected and holds the actions: share the current tab, open the Automations, Connect and Settings pages, switch itsme off. Everything else is on the Settings page, which is the extension's options page: the debugger option, the animation, allowed and blocked sites, and the port.
 
 ## Tools
 
@@ -201,7 +201,6 @@ On Chromium the extension uses `chrome.debugger` for three things: real mouse an
 | Variable            | Default | Notes                                                                  |
 | ------------------- | ------- | ---------------------------------------------------------------------- |
 | `ITSME_PORT`        | `47821` | Also `--port`. Set the same port in the extension's options            |
-| `ITSME_TOKEN`       | (none)  | Shared secret; enter the same value in the extension's options         |
 | `ITSME_TIMEOUT_MS`  | `30000` | Per-command timeout                                                    |
 | `ITSME_LOG_LEVEL`   | `info`  | `debug`, `info`, `warn`, `error`, `silent`. Logs go to stderr          |
 | `ITSME_UPLOAD_DIRS` | (none)  | Folders `page_upload` may read from, separated by `:` (`;` on Windows) |
@@ -265,7 +264,7 @@ A browser build that can't support a command leaves its handler out; the extensi
 
 - The server binds to `127.0.0.1` only.
 - The extension endpoint requires an extension `Origin`, which web pages can't forge, so a website can't connect to the port.
-- Any local process can still connect. Set `ITSME_TOKEN` to require a shared secret on both sides.
+- Any program running on this computer can still connect to the port, as an AI app's server does. There is no shared secret: one in every app's settings and in the extension broke the connection whenever a single copy differed, and a program able to connect could read it from those settings anyway.
 - `tabs_open` and `page_navigate` accept only `http` and `https` URLs.
 - `page_snapshot` never returns password field values.
 - An automation runs only after the user approves it in the extension, only on the sites of its own URLs, and never types into password fields. Its page takes the approval from the extension's own pages only, and only from a real click.

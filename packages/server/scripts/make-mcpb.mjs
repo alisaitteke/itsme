@@ -69,7 +69,6 @@ const manifest = {
       args: ['${__dirname}/server/cli.mjs'],
       env: {
         ITSME_PORT: '${user_config.port}',
-        ITSME_TOKEN: '${user_config.token}',
         ITSME_UPLOAD_DIRS: '${user_config.upload_dir}',
       },
     },
@@ -82,13 +81,6 @@ const manifest = {
       default: 47821,
       min: 1,
       max: 65535,
-      required: false,
-    },
-    token: {
-      type: 'string',
-      title: 'Token',
-      description: 'Optional shared secret. Enter the same value in the extension settings.',
-      sensitive: true,
       required: false,
     },
     upload_dir: {

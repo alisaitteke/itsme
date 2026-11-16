@@ -5,7 +5,6 @@ import { isLogLevel, type LogLevel } from './logger.ts';
 
 export interface Config {
   port: number;
-  token: string | undefined;
   requestTimeoutMs: number;
   /** Folders page_upload may read from. Empty: uploads are off. */
   uploadDirs: string[];
@@ -25,7 +24,6 @@ Options:
 
 Environment:
   ITSME_PORT         Same as --port
-  ITSME_TOKEN        Shared secret the extension must present
   ITSME_TIMEOUT_MS   Per-command timeout (default ${DEFAULT_REQUEST_TIMEOUT_MS})
   ITSME_LOG_LEVEL    debug | info | warn | error | silent (default info)
   ITSME_UPLOAD_DIRS  Folders page_upload may read from, separated by "${delimiter}" (default: none)
@@ -70,7 +68,6 @@ export function parseCli(argv: string[], env: NodeJS.ProcessEnv): CliAction {
     kind: 'run',
     config: {
       port: port ? positiveInt(port, 'Port', 65_535) : DEFAULT_PORT,
-      token: setting(env, 'ITSME_TOKEN'),
       requestTimeoutMs: timeout
         ? positiveInt(timeout, 'ITSME_TIMEOUT_MS', 600_000)
         : DEFAULT_REQUEST_TIMEOUT_MS,

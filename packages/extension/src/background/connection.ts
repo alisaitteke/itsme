@@ -11,6 +11,7 @@ import {
   toWireError,
   type WelcomeMessage,
 } from '@itsme/protocol';
+import { OLD_SERVER } from '../shared/runtime-messages.ts';
 
 export type ConnectionState = 'disconnected' | 'connecting' | 'connected';
 
@@ -23,7 +24,6 @@ export interface ConnectionStatus {
 
 export interface ConnectionOptions {
   url: string;
-  token?: string;
   browser: BrowserInfo;
   onRequest(command: string, params: unknown): Promise<unknown>;
   onDisconnect?(): void;
@@ -97,7 +97,6 @@ export class BridgeConnection {
       this.#send(socket, {
         type: 'hello',
         protocolVersion: PROTOCOL_VERSION,
-        token: this.#options.token,
         browser: this.#options.browser,
       });
       this.#helloTimer = setTimeout(
@@ -159,7 +158,7 @@ export class BridgeConnection {
   }
 
   #closeReason(code: number | undefined, reason: string): string {
-    if (code === CloseCode.Unauthorized) return 'The server rejected the token';
+    if (code === CloseCode.Unauthorized) return OLD_SERVER;
     if (code === CloseCode.ProtocolMismatch) {
       return `Version mismatch: ${reason || 'update the extension or the server'}`;
     }

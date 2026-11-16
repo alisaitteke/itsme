@@ -29,7 +29,6 @@ async function main(): Promise<void> {
   const logger = createLogger(config.logLevel);
   const bridge = new Bridge({
     port: config.port,
-    token: config.token,
     requestTimeoutMs: config.requestTimeoutMs,
     serverVersion: pkg.version,
     launch: { command: process.execPath, args: [fileURLToPath(import.meta.url)] },

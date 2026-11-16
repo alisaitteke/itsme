@@ -5,6 +5,9 @@ export const STATUS_REQUEST = { type: 'itsme/status' } as const;
 /** Null while the bridge is switched off. */
 export type StatusResponse = ConnectionStatus | null;
 
+/** Why the connection failed when the port's server still asks for a token, as old ones did. */
+export const OLD_SERVER = 'An itsme server from before the last update holds the port';
+
 /** Sent by the in-page badge when the user presses Stop. */
 export const STOP_REQUEST = { type: 'itsme/stop' } as const;
 

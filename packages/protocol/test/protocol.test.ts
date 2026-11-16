@@ -8,6 +8,11 @@ describe('messages', () => {
     expect(decodeMessage(encodeMessage(message))).toEqual(message);
   });
 
+  it('reads the hello of an extension that still sends a token', () => {
+    const hello = { type: 'hello', protocolVersion: 3, token: 'left over' };
+    expect(decodeMessage(JSON.stringify(hello))).toEqual({ type: 'hello', protocolVersion: 3 });
+  });
+
   it('rejects malformed input with INVALID_MESSAGE', () => {
     for (const raw of ['not json', '{"type":"nope"}', '{"type":"request"}']) {
       expect(() => decodeMessage(raw)).toThrowError(

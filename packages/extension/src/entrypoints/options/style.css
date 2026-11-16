@@ -230,21 +230,15 @@ section {
 
 /* Connection */
 .connection {
-  display: grid;
-  grid-template-columns: 140px 1fr;
-  gap: 16px;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: end;
+  gap: 12px;
   padding: 20px;
 }
 
-.connection .button {
-  grid-column: 1 / -1;
-  justify-self: start;
-}
-
-@media (max-width: 520px) {
-  .connection {
-    grid-template-columns: 1fr;
-  }
+.connection .port {
+  width: 140px;
 }
 
 .toast {

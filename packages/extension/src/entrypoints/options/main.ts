@@ -29,7 +29,6 @@ const realInput = byId<HTMLInputElement>('real-input');
 const askSites = byId<HTMLInputElement>('ask-sites');
 const indicator = byId('indicator');
 const port = byId<HTMLInputElement>('port');
-const token = byId<HTMLInputElement>('token');
 const saved = byId('saved');
 
 const refreshStatus = mountShell('settings');
@@ -128,7 +127,6 @@ async function fill(all: boolean): Promise<void> {
   showBlocked(settings.blockedSites);
   if (!all) return;
   port.value = String(settings.port);
-  token.value = settings.token;
 }
 
 /** Keeps the preview, drawn 960px wide, scaled to the room it has. */
@@ -154,7 +152,7 @@ async function init(): Promise<void> {
   );
   byId<HTMLFormElement>('connection').addEventListener('submit', (event) => {
     event.preventDefault();
-    void save({ port: port.valueAsNumber, token: token.value });
+    void save({ port: port.valueAsNumber });
   });
   // The popup, the Stop button and the site prompt change settings too.
   onSettingsChanged(() => void fill(false));

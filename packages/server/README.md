@@ -24,12 +24,11 @@ Needs Node.js 20 or newer.
 
 ## Configuration
 
-| Variable            | Default | Notes                                                          |
-| ------------------- | ------- | -------------------------------------------------------------- |
-| `ITSME_PORT`        | `47821` | Port the extension connects to. Also `--port`                  |
-| `ITSME_TOKEN`       | (none)  | Shared secret; enter the same value in the extension's options |
-| `ITSME_UPLOAD_DIRS` | (none)  | Folders `page_upload` may read from                            |
-| `ITSME_TIMEOUT_MS`  | `30000` | Per-command timeout                                            |
-| `ITSME_LOG_LEVEL`   | `info`  | `debug`, `info`, `warn`, `error`, `silent`. Logs go to stderr  |
+| Variable            | Default | Notes                                                         |
+| ------------------- | ------- | ------------------------------------------------------------- |
+| `ITSME_PORT`        | `47821` | Port the extension connects to. Also `--port`                 |
+| `ITSME_UPLOAD_DIRS` | (none)  | Folders `page_upload` may read from                           |
+| `ITSME_TIMEOUT_MS`  | `30000` | Per-command timeout                                           |
+| `ITSME_LOG_LEVEL`   | `info`  | `debug`, `info`, `warn`, `error`, `silent`. Logs go to stderr |
 
 Tools, security notes and limits are in the [project README](https://github.com/alisaitteke/itsme#readme).

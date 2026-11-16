@@ -1,4 +1,4 @@
-import type { StatusResponse } from './runtime-messages.ts';
+import { OLD_SERVER, type StatusResponse } from './runtime-messages.ts';
 
 export interface StatusView {
   state: 'connected' | 'waiting' | 'off' | 'problem';
@@ -25,11 +25,11 @@ export function describeStatus(status: StatusResponse): StatusView {
     };
   }
   const reason = status.lastError ?? '';
-  if (reason.includes('token')) {
+  if (reason === OLD_SERVER) {
     return {
       state: 'problem',
-      label: 'Token doesn’t match',
-      help: 'The token in Settings is not the one your AI app uses. Enter the same one in both.',
+      label: 'Restart your AI apps',
+      help: 'One of them still runs an itsme from before the last update. Quit and reopen the apps you added itsme to.',
     };
   }
   if (reason.startsWith('Version mismatch')) {

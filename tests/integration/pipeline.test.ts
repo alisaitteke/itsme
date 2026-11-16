@@ -32,10 +32,9 @@ describe('MCP client to extension', () => {
     for (const cleanup of cleanups.splice(0).reverse()) await cleanup();
   });
 
-  async function startServer(port: number, token?: string) {
+  async function startServer(port: number) {
     const bridge = new Bridge({
       port,
-      token,
       requestTimeoutMs: 1_000,
       serverVersion: '0.0.0-test',
       logger: silentLogger,
@@ -51,11 +50,10 @@ describe('MCP client to extension', () => {
     return { bridge, client };
   }
 
-  function startExtension(port: number, handlers: Handlers, token?: string) {
+  function startExtension(port: number, handlers: Handlers) {
     const router = createRouter(handlers);
     const connection = new BridgeConnection({
       url: `ws://${BRIDGE_HOST}:${port}${EXTENSION_PATH}`,
-      token,
       browser: {
         name: 'chrome',
         version: '142.0',
@@ -130,14 +128,5 @@ describe('MCP client to extension', () => {
     await connected(extension);
     const result = await second.client.callTool({ name: 'tabs_list', arguments: {} });
     expect(result.isError).toBeFalsy();
-  });
-
-  it('explains a rejected token', async () => {
-    const port = await freePort();
-    await startServer(port, 'secret');
-    const extension = startExtension(port, {}, 'wrong');
-
-    await vi.waitFor(() => expect(extension.status.lastError).toMatch(/rejected the token/));
-    expect(extension.status.state).not.toBe('connected');
   });
 });

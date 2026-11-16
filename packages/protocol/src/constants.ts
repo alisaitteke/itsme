@@ -16,6 +16,7 @@ export const DEFAULT_REQUEST_TIMEOUT_MS = 30_000;
 export const CloseCode = {
   BadHello: 4000,
   ProtocolMismatch: 4001,
+  /** Only servers from before tokens were dropped send this. */
   Unauthorized: 4002,
   Unresponsive: 4003,
 } as const;

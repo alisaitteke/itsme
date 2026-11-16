@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest';
+import { OLD_SERVER } from '../src/shared/runtime-messages.ts';
 import { describeStatus } from '../src/shared/status-view.ts';
 
 const base = { url: 'ws://127.0.0.1:47821/extension' };
@@ -19,11 +20,12 @@ describe('describeStatus', () => {
     expect(view).toMatchObject({ state: 'waiting', label: 'Waiting for an AI app' });
   });
 
-  it('names a wrong token and a version mismatch as problems to fix', () => {
+  it('names an old server and a version mismatch as problems to fix', () => {
     const refused = { ...base, state: 'disconnected' as const };
-    expect(
-      describeStatus({ ...refused, lastError: 'The server rejected the token' }),
-    ).toMatchObject({ state: 'problem', label: 'Token doesn’t match' });
+    expect(describeStatus({ ...refused, lastError: OLD_SERVER })).toMatchObject({
+      state: 'problem',
+      label: 'Restart your AI apps',
+    });
     expect(
       describeStatus({ ...refused, lastError: 'Version mismatch: update the extension' }),
     ).toMatchObject({ state: 'problem', label: 'Update needed' });
