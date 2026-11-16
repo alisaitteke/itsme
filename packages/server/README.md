@@ -31,4 +31,4 @@ Needs Node.js 20 or newer.
 | `ITSME_TIMEOUT_MS`  | `30000` | Per-command timeout                                           |
 | `ITSME_LOG_LEVEL`   | `info`  | `debug`, `info`, `warn`, `error`, `silent`. Logs go to stderr |
 
-Tools, security notes and limits are in the [project README](https://github.com/alisaitteke/itsme#readme).
+Tools and security notes are in the [project README](https://github.com/alisaitteke/itsme#readme), limits in [docs/browser.md](https://github.com/alisaitteke/itsme/blob/main/docs/browser.md#known-limits).
