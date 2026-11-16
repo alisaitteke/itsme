@@ -1,6 +1,6 @@
 # Connecting an MCP client
 
-itsme is a local stdio MCP server, published on npm as `itsme-mcp`. The extension's setup page ("Add to an AI app" in the popup) does this for Claude Desktop, Cursor, VS Code, Claude Code and Codex in one click or one pasted command. This page covers the same apps by hand, and the ones the setup page doesn't list.
+itsme is a local stdio MCP server, published on npm as `itsme-mcp`. The extension's Connect page ("Connect an AI app" in the popup) does this for Claude Desktop, Cursor, VS Code, Claude Code and Codex in one click or one pasted command. This page covers the same apps by hand, and the ones the Connect page doesn't list.
 
 The steps follow each app's own documentation as of November 2026. Only the Claude Code entry has been used with this project so far, and Devin Desktop's documentation doesn't spell out its file format.
 
@@ -60,13 +60,13 @@ claude mcp add --scope user itsme -e ITSME_UPLOAD_DIRS=/Users/me/Downloads -- np
 
 ## Cursor
 
-"Add to Cursor" on the setup page opens Cursor's own install prompt.
+"Add to Cursor" on the Connect page opens Cursor's own install prompt.
 
 By hand: put the entry above in `~/.cursor/mcp.json` for every project, or in `.cursor/mcp.json` at a project root for that project. A project entry wins over a global one with the same name. Cursor's MCP settings page shows whether the server started.
 
 ## VS Code (Copilot)
 
-"Add to VS Code" on the setup page opens the server in VS Code for review before it is added.
+"Add to VS Code" on the Connect page opens the server in VS Code for review before it is added.
 
 By hand: run **Chat: Open Customizations**, pick **MCP Servers**, press **Add Server** in the User group, choose **Command (stdio)**, enter `npx -y itsme-mcp`, name it `itsme` and pick **Global**.
 

@@ -1,4 +1,15 @@
-# itsme
+<p align="center">
+  <img src="packages/extension/brand/mark.svg" width="80" height="80" alt="">
+</p>
+
+<h1 align="center">itsme</h1>
+
+<p align="center">Let your AI app work in the browser you already use.<br>It only touches the tabs you share and the sites you allow.</p>
+
+<p align="center">
+  <a href="https://github.com/alisaitteke/itsme/releases/latest"><img src="https://img.shields.io/github/v/release/alisaitteke/itsme?color=0b8a62&label=release" alt="Latest release"></a>
+  <a href="https://www.npmjs.com/package/itsme-mcp"><img src="https://img.shields.io/npm/v/itsme-mcp?color=0b8a62&label=itsme-mcp" alt="itsme-mcp on npm"></a>
+</p>
 
 Browser extension plus MCP server that let an MCP client drive the browser you already use: open tabs, read pages, click, type, drag, press keys, take screenshots and read the console and network. It can also save steps as an automation that the extension repeats on a schedule by itself.
 
@@ -21,15 +32,16 @@ pnpm build
 
 Open `chrome://extensions`, turn on Developer mode, choose "Load unpacked" and pick `packages/extension/.output/chrome-mv3`.
 
-### 2. The AI app
+### 2. Connect your AI app
 
-The extension opens a setup page when it is first installed, with one action per app. "Connect an AI app" in the popup opens it again.
+The extension opens the Connect page when it is first installed, with one action per app. "Connect an AI app" in the popup opens it again.
 
 | App             | What to do                                                                                                                       | Needs Node.js |
 | --------------- | -------------------------------------------------------------------------------------------------------------------------------- | ------------- |
 | Claude Desktop  | Download `itsme.mcpb` from the [latest release](https://github.com/alisaitteke/itsme/releases/latest), open it and press Install | No            |
-| Cursor, VS Code | Press "Add to Cursor" or "Add to VS Code" on the setup page and confirm in the app                                               | Yes           |
+| Cursor, VS Code | Press "Add to Cursor" or "Add to VS Code" on the Connect page and confirm in the app                                             | Yes           |
 | Claude Code     | `claude mcp add --scope user itsme -- npx -y itsme-mcp`                                                                          | Yes           |
+| Codex           | `codex mcp add itsme -- npx -y itsme-mcp`                                                                                        | Yes           |
 | Anything else   | Add the entry below to its MCP settings                                                                                          | Yes           |
 
 ```json
@@ -42,9 +54,9 @@ The extension opens a setup page when it is first installed, with one action per
 
 [docs/clients.md](docs/clients.md) has the steps for each app and a troubleshooting table.
 
-To run a build from this checkout instead of the published package, use `node /absolute/path/to/itsme/packages/server/dist/cli.mjs` as the command. Once the browser is connected to such a build, the setup page offers that path by itself.
+To run a build from this checkout instead of the published package, use `node /absolute/path/to/itsme/packages/server/dist/cli.mjs` as the command. Once the browser is connected to such a build, the Connect page offers that path by itself.
 
-The popup shows whether the browser is connected and holds the actions: share the current tab, open the Automations, Connect and Settings pages, switch itsme off. Everything else is on the Settings page, which is the extension's options page: the debugger option, the animation, allowed and blocked sites, and the port.
+The popup shows whether the browser is connected and holds the actions: share the current tab, open the Automations, Connect and Settings pages, switch itsme off. Everything else is on the Settings page, which opens in a tab: "Let AI apps use this browser", "Real mouse and keyboard", the animation, allowed and blocked sites, and the port.
 
 ## Tools
 
@@ -191,9 +203,9 @@ The Settings page lists the allowed and the blocked sites; blocked ones are refu
 On Chromium the extension uses `chrome.debugger` for three things: real mouse and keyboard input, so pages see trusted events and a user gesture; the console; and network recording. While a tab is attached the browser shows a "started debugging this browser" bar.
 
 - The debugger attaches on the first pointer, keyboard, console or network call in a tab. It detaches when the server disconnects, or after two minutes without use (ten while a tab is being recorded).
-- Pressing Cancel on the bar turns the option off. Turn it back on in the Settings page.
+- This is "Real mouse and keyboard" on the Settings page. Pressing Cancel on the bar turns it off; turn it back on there.
 - For input, the tab is made the visible one in its window first; a hidden tab doesn't answer input.
-- Scripted DOM events are used instead when the option is off, in Firefox, when the debugger can't attach, when something covers the element, for `<select>` elements and for clearing a field to empty. `page_drag`, `page_console` and `page_network` have no scripted version and answer `UNSUPPORTED`.
+- Scripted DOM events are used instead when it is off, in Firefox, when the debugger can't attach, when something covers the element, for `<select>` elements and for clearing a field to empty. `page_drag`, `page_console` and `page_network` have no scripted version and answer `UNSUPPORTED`.
 - `page_console` returns what the page logged before the recording started as well. `page_network` only has requests made after its first call on a tab, so call it once and then reload to capture a page load.
 
 ## Configuration
@@ -246,7 +258,7 @@ packages/
       effects/          the indicator's animations, one file each
     src/entrypoints/  background, agent content script, popup, options, setup and automations pages, the animation preview, the PDF reader
     src/ui/           what the pages share: styles, top bar, status
-    brand/, scripts/  the mark and the script that draws the icons from it (`pnpm --filter @itsme/extension icons`)
+    brand/, scripts/  the mark and the script that draws the icons and `mark.svg` from it (`pnpm --filter @itsme/extension icons`)
 tests/
   integration/   MCP client through to the extension's connection and router, in Node
   e2e/           the same path in a real Chromium
